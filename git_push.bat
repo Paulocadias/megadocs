@@ -37,8 +37,8 @@ echo [Configuring] Setting remote origin...
 git remote remove origin >nul 2>&1
 git remote add origin https://github.com/Paulocadias/DOCSsite.git
 
-echo [Pushing] Uploading code to GitHub...
-git push https://Paulocadias:%GITHUB_TOKEN%@github.com/Paulocadias/DOCSsite.git main
+echo [Pushing] Uploading code to GitHub (Force Update)...
+git push --force https://Paulocadias:%GITHUB_TOKEN%@github.com/Paulocadias/DOCSsite.git main
 
 if %ERRORLEVEL% EQU 0 (
     echo.
