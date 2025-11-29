@@ -1,0 +1,28 @@
+PassengerEnabled On
+PassengerAppRoot /home/YOUR_USERNAME/paulocadias.com
+PassengerPython /home/YOUR_USERNAME/paulocadias.com/venv/bin/python3
+
+# Security headers
+Header set X-Content-Type-Options "nosniff"
+Header set X-Frame-Options "DENY"
+Header set X-XSS-Protection "1; mode=block"
+
+# Disable directory listing
+Options -Indexes
+
+# Protect sensitive files
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+<FilesMatch "\.(py|pyc|env|txt)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Allow static files
+<FilesMatch "\.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2)$">
+    Order allow,deny
+    Allow from all
+</FilesMatch>

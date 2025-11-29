@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Comparison - Side by Side Diff | paulocadias.com</title>
+    <meta name="description" content="Compare two documents side by side. Upload PDF, Word, Excel files and see differences highlighted. Free, secure, no registration.">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='15' fill='%232563eb'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>MD</text></svg>">
+    <link rel="stylesheet" href="/static/style.css">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <style>
+        .compare-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .upload-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .upload-box {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+        }
+        .upload-box h3 {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .upload-box h3 .badge {
+            margin: 0;
+        }
+        .file-drop {
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            padding: 2rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #f8fafc;
+        }
+        .file-drop:hover, .file-drop.drag-over {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+        .file-drop.has-file {
+            border-color: var(--success);
+            background: #f0fdf4;
+        }
+        .file-drop p { margin: 0.5rem 0; font-size: 0.9rem; color: var(--text-light); }
+        .file-drop .file-name {
+            font-weight: 600;
+            color: var(--text);
+            word-break: break-all;
+        }
+        .compare-btn {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1rem;
+        }
+        .diff-container {
+            background: var(--surface);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            margin-top: 2rem;
+        }
+        .diff-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.5rem;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+        }
+        .diff-header h3 { font-size: 1rem; margin: 0; }
+        .diff-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.85rem;
+        }
+        .diff-stats .added { color: #16a34a; }
+        .diff-stats .removed { color: #dc2626; }
+        .diff-stats .unchanged { color: var(--text-light); }
+        .diff-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .diff-pane {
+            padding: 1rem;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border-right: 1px solid var(--border);
+        }
+        .diff-pane:last-child { border-right: none; }
+        .diff-pane-header {
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            padding: 0.5rem;
+            margin: -1rem -1rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            font-family: inherit;
+        }
+        .diff-line { padding: 2px 4px; border-radius: 2px; display: block; }
+        .diff-line.added { background: #dcfce7; color: #166534; }
+        .diff-line.removed { background: #fee2e2; color: #991b1b; }
+        .diff-line.changed { background: #fef3c7; color: #92400e; }
+        .unified-diff {
+            padding: 1rem;
+            font-family: 'SF Mono', 'Monaco', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .view-toggle-bar {
+            display: flex;
+            gap: 0.5rem;
+            padding: 1rem 1.5rem;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+        }
+        .view-toggle-bar button {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        .view-toggle-bar button.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        @media (max-width: 768px) {
+            .upload-grid { grid-template-columns: 1fr; }
+            .diff-content { grid-template-columns: 1fr; }
+            .diff-pane { border-right: none; border-bottom: 1px solid var(--border); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Global Header - Outside container for consistent positioning -->
+    <div class="site-header-wrapper">
+        <header class="site-header">
+            <a href="/" class="logo-link">
+                <div class="logo-icon">MD</div>
+                <span class="logo-text">MegaDoc</span>
+            </a>
+            <nav>
+                <a href="/">Convert</a>
+                <a href="/rag">RAG Pipeline</a>
+                <a href="/compare" class="active">Compare</a>
+                <a href="/architecture">Architecture</a>
+                <a href="/use-cases">Use Cases</a>
+                <a href="/api/docs">API</a>
+                <a href="/contact">Contact</a>
+            </nav>
+        </header>
+    </div>
+
+    <div class="app-container compare-container">
+        <!-- Hero -->
+        <section class="hero-section" style="margin-bottom: 2rem;">
+            <span class="badge">DOCUMENT COMPARISON</span>
+            <h1 style="font-size: 2rem;">Compare Two Documents</h1>
+            <p>Upload two documents and see the differences highlighted side by side. Both documents are converted to Markdown first, then compared.</p>
+        </section>
+
+        <!-- Upload Grid -->
+        <div class="upload-grid">
+            <div class="upload-box">
+                <h3><span class="badge" style="background: #dbeafe;">1</span> Original Document</h3>
+                <div class="file-drop" id="dropZone1">
+                    <p><strong>Drop file here</strong></p>
+                    <p>or click to browse</p>
+                    <p class="file-name" id="fileName1"></p>
+                    <input type="file" id="fileInput1" hidden accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.html,.htm,.txt,.md,.csv,.json,.xml,.epub,.png,.jpg,.jpeg,.gif,.bmp,.webp">
+                </div>
+            </div>
+            <div class="upload-box">
+                <h3><span class="badge" style="background: #dcfce7; color: #166534;">2</span> Modified Document</h3>
+                <div class="file-drop" id="dropZone2">
+                    <p><strong>Drop file here</strong></p>
+                    <p>or click to browse</p>
+                    <p class="file-name" id="fileName2"></p>
+                    <input type="file" id="fileInput2" hidden accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.html,.htm,.txt,.md,.csv,.json,.xml,.epub,.png,.jpg,.jpeg,.gif,.bmp,.webp">
+                </div>
+            </div>
+        </div>
+
+        <!-- Compare Button -->
+        <button class="cta-button compare-btn" id="compareBtn" disabled>
+            <span class="btn-text">Compare Documents</span>
+            <span class="btn-loading" hidden>Comparing...</span>
+        </button>
+
+        <!-- Status Message -->
+        <div class="status-message hidden" id="message"></div>
+
+        <!-- Diff Results -->
+        <div class="diff-container hidden" id="diffContainer">
+            <div class="diff-header">
+                <h3>Comparison Results</h3>
+                <div class="diff-stats" id="diffStats"></div>
+            </div>
+            <div class="view-toggle-bar">
+                <button class="active" id="sideBySideBtn">Side by Side</button>
+                <button id="unifiedBtn">Unified</button>
+            </div>
+            <div class="diff-content" id="sideBySideView">
+                <div class="diff-pane" id="leftPane">
+                    <div class="diff-pane-header">Original</div>
+                    <div id="leftContent"></div>
+                </div>
+                <div class="diff-pane" id="rightPane">
+                    <div class="diff-pane-header">Modified</div>
+                    <div id="rightContent"></div>
+                </div>
+            </div>
+            <div class="unified-diff hidden" id="unifiedView"></div>
+        </div>
+
+        <!-- Info -->
+        <section style="margin-top: 3rem; text-align: center; color: var(--text-light); font-size: 0.9rem;">
+            <p>Files are processed in memory and deleted immediately. No data is stored.</p>
+            <p style="margin-top: 0.5rem;">Supported formats: PDF, Word, Excel, PowerPoint, HTML, Images, and more</p>
+        </section>
+
+        <!-- Footer -->
+        <footer style="margin-top: 3rem; padding: 2rem 0; border-top: 1px solid var(--border); text-align: center; color: var(--text-light); font-size: 0.85rem;">
+            <p>&copy; 2025 paulocadias.com - Zero data retention. 100% privacy.</p>
+        </footer>
+    </div>
+
+    <script>
+        window.CSRF_TOKEN = "{{ csrf_token }}";
+
+        const dropZone1 = document.getElementById('dropZone1');
+        const dropZone2 = document.getElementById('dropZone2');
+        const fileInput1 = document.getElementById('fileInput1');
+        const fileInput2 = document.getElementById('fileInput2');
+        const fileName1 = document.getElementById('fileName1');
+        const fileName2 = document.getElementById('fileName2');
+        const compareBtn = document.getElementById('compareBtn');
+        const message = document.getElementById('message');
+        const diffContainer = document.getElementById('diffContainer');
+
+        let file1 = null;
+        let file2 = null;
+
+        // Setup drop zones
+        setupDropZone(dropZone1, fileInput1, fileName1, (f) => { file1 = f; checkReady(); });
+        setupDropZone(dropZone2, fileInput2, fileName2, (f) => { file2 = f; checkReady(); });
+
+        function setupDropZone(zone, input, nameEl, callback) {
+            zone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                zone.classList.add('drag-over');
+            });
+            zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('drag-over');
+                if (e.dataTransfer.files.length) {
+                    handleFile(e.dataTransfer.files[0], zone, nameEl, callback);
+                }
+            });
+            zone.addEventListener('click', () => input.click());
+            input.addEventListener('change', () => {
+                if (input.files.length) {
+                    handleFile(input.files[0], zone, nameEl, callback);
+                }
+            });
+        }
+
+        function handleFile(file, zone, nameEl, callback) {
+            zone.classList.add('has-file');
+            nameEl.textContent = file.name;
+            callback(file);
+        }
+
+        function checkReady() {
+            compareBtn.disabled = !(file1 && file2);
+        }
+
+        function showMessage(text, type) {
+            message.textContent = text;
+            message.className = 'status-message ' + type;
+            message.classList.remove('hidden');
+        }
+
+        function hideMessage() {
+            message.classList.add('hidden');
+        }
+
+        // Compare button
+        compareBtn.addEventListener('click', async () => {
+            if (!file1 || !file2) return;
+
+            compareBtn.disabled = true;
+            const btnText = compareBtn.querySelector('.btn-text');
+            const btnLoading = compareBtn.querySelector('.btn-loading');
+            btnText.hidden = true;
+            btnLoading.hidden = false;
+            showMessage('Converting and comparing documents...', 'success');
+
+            try {
+                // Convert both files
+                const [result1, result2] = await Promise.all([
+                    convertFile(file1),
+                    convertFile(file2)
+                ]);
+
+                if (!result1.success || !result2.success) {
+                    showMessage('Failed to convert one or both documents', 'error');
+                    return;
+                }
+
+                // Compare
+                const response = await fetch('/api/compare', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': window.CSRF_TOKEN
+                    },
+                    body: JSON.stringify({
+                        original: result1.content,
+                        modified: result2.content
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    hideMessage();
+                    displayDiff(data);
+                } else {
+                    showMessage(data.error || 'Comparison failed', 'error');
+                }
+
+            } catch (e) {
+                console.error(e);
+                showMessage('Network error. Please try again.', 'error');
+            }
+
+            btnText.hidden = false;
+            btnLoading.hidden = true;
+            compareBtn.disabled = false;
+        });
+
+        async function convertFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('output_format', 'markdown');
+
+            const response = await fetch('/api/convert', {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRF-Token': window.CSRF_TOKEN }
+            });
+
+            return await response.json();
+        }
+
+        function displayDiff(data) {
+            diffContainer.classList.remove('hidden');
+
+            // Stats
+            const stats = data.stats || {};
+            document.getElementById('diffStats').innerHTML = `
+                <span class="added">+${stats.additions || 0} added</span>
+                <span class="removed">-${stats.deletions || 0} removed</span>
+                <span class="unchanged">${stats.unchanged || 0} unchanged</span>
+            `;
+
+            // Side by side
+            const leftContent = document.getElementById('leftContent');
+            const rightContent = document.getElementById('rightContent');
+            leftContent.innerHTML = '';
+            rightContent.innerHTML = '';
+
+            const diff = data.diff || [];
+            diff.forEach(line => {
+                const leftLine = document.createElement('span');
+                const rightLine = document.createElement('span');
+                leftLine.className = 'diff-line';
+                rightLine.className = 'diff-line';
+
+                if (line.type === 'removed') {
+                    leftLine.className += ' removed';
+                    leftLine.textContent = line.text;
+                    rightLine.textContent = '';
+                } else if (line.type === 'added') {
+                    leftLine.textContent = '';
+                    rightLine.className += ' added';
+                    rightLine.textContent = line.text;
+                } else {
+                    leftLine.textContent = line.text;
+                    rightLine.textContent = line.text;
+                }
+
+                leftContent.appendChild(leftLine);
+                rightContent.appendChild(rightLine);
+            });
+
+            // Unified view
+            const unifiedView = document.getElementById('unifiedView');
+            unifiedView.innerHTML = '';
+            diff.forEach(line => {
+                const span = document.createElement('span');
+                span.className = 'diff-line';
+                if (line.type === 'removed') {
+                    span.className += ' removed';
+                    span.textContent = '- ' + line.text;
+                } else if (line.type === 'added') {
+                    span.className += ' added';
+                    span.textContent = '+ ' + line.text;
+                } else {
+                    span.textContent = '  ' + line.text;
+                }
+                unifiedView.appendChild(span);
+            });
+        }
+
+        // View toggle
+        const sideBySideBtn = document.getElementById('sideBySideBtn');
+        const unifiedBtn = document.getElementById('unifiedBtn');
+        const sideBySideView = document.getElementById('sideBySideView');
+        const unifiedView = document.getElementById('unifiedView');
+
+        sideBySideBtn.addEventListener('click', () => {
+            sideBySideBtn.classList.add('active');
+            unifiedBtn.classList.remove('active');
+            sideBySideView.classList.remove('hidden');
+            unifiedView.classList.add('hidden');
+        });
+
+        unifiedBtn.addEventListener('click', () => {
+            unifiedBtn.classList.add('active');
+            sideBySideBtn.classList.remove('active');
+            unifiedView.classList.remove('hidden');
+            sideBySideView.classList.add('hidden');
+        });
+    </script>
+</body>
+</html>

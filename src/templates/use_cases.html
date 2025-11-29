@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Use Cases - Enterprise Document Automation | paulocadias.com</title>
+    <meta name="description" content="Discover how businesses use document conversion for RAG pipelines, knowledge management, compliance, and digital transformation.">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='15' fill='%232563eb'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>MD</text></svg>">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Page-specific styles */
+        .app-container { max-width: 1100px; }
+
+        /* Hero */
+        .hero {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+        .badge {
+            display: inline-block;
+            background: #dbeafe;
+            color: var(--primary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            color: var(--text);
+        }
+        .hero p {
+            font-size: 1.1rem;
+            color: var(--text-light);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Privacy Banner */
+        .privacy-banner {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 4rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+        .privacy-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .privacy-icon { font-size: 1.5rem; }
+        .privacy-item strong { display: block; font-size: 0.9rem; }
+        .privacy-item span { font-size: 0.8rem; opacity: 0.85; }
+
+        /* Use Case Section */
+        .use-case {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin-bottom: 4rem;
+            align-items: center;
+        }
+        .use-case.reverse { direction: rtl; }
+        .use-case.reverse > * { direction: ltr; }
+        .use-case-content h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .use-case-content p {
+            color: var(--text-light);
+            margin-bottom: 1.5rem;
+        }
+        .feature-list {
+            list-style: none;
+        }
+        .feature-list li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        .feature-list li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        /* Flow Diagram (LangGraph Style) */
+        .flow-diagram {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+        .flow-nodes {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .flow-node {
+            background: white;
+            border: 2px solid var(--border);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            min-width: 180px;
+            text-align: center;
+            position: relative;
+        }
+        .flow-node.input { border-color: var(--primary); background: #eff6ff; }
+        .flow-node.process { border-color: var(--warning); background: #fefce8; }
+        .flow-node.output { border-color: var(--success); background: #f0fdf4; }
+        .flow-arrow {
+            color: var(--text-light);
+            font-size: 1.25rem;
+        }
+        .flow-label {
+            font-size: 0.7rem;
+            color: var(--text-light);
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            text-align: center;
+            background: var(--surface);
+            padding: 3rem;
+            border-radius: 12px;
+            margin-top: 2rem;
+        }
+        .cta-section h2 { margin-bottom: 1rem; }
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+        .btn {
+            padding: 0.875rem 2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-dark); }
+        .btn-secondary { background: white; color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: var(--bg); }
+
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: var(--text-light);
+            font-size: 0.875rem;
+        }
+
+        @media (max-width: 768px) {
+            .use-case { grid-template-columns: 1fr; }
+            .use-case.reverse { direction: ltr; }
+            .privacy-banner { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Global Header - Outside container for consistent positioning -->
+    <div class="site-header-wrapper">
+        <header class="site-header">
+            <a href="/" class="logo-link">
+                <div class="logo-icon">MD</div>
+                <span class="logo-text">MegaDoc</span>
+            </a>
+            <nav>
+                <a href="/convert">Convert</a>
+                <a href="/rag">RAG Pipeline</a>
+                <a href="/compare">Compare</a>
+                <a href="/architecture">Architecture</a>
+                <a href="/use-cases" class="active">Use Cases</a>
+                <a href="/api/docs">API</a>
+                <a href="/contact">Contact</a>
+            </nav>
+        </header>
+    </div>
+
+    <div class="app-container">
+        <!-- Hero -->
+        <section class="hero">
+            <span class="badge">DOCUMENT INTELLIGENCE • ZERO DATA RETENTION</span>
+            <h1>Data Preparation for AI & Chatbots</h1>
+            <p>Transform enterprise documents into training data for LLMs, knowledge bases for chatbots, and vector embeddings for semantic search—all with privacy-first architecture.</p>
+        </section>
+
+        <!-- Privacy Banner -->
+        <div class="privacy-banner">
+            <div class="privacy-item">
+                <span class="privacy-icon">🔒</span>
+                <div>
+                    <strong>On-Premise</strong>
+                    <span>Deploy on your servers</span>
+                </div>
+            </div>
+            <div class="privacy-item">
+                <span class="privacy-icon">🗑️</span>
+                <div>
+                    <strong>Zero Retention</strong>
+                    <span>Files deleted instantly</span>
+                </div>
+            </div>
+            <div class="privacy-item">
+                <span class="privacy-icon">📡</span>
+                <div>
+                    <strong>No External APIs</strong>
+                    <span>100% offline processing</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Use Case 1: RAG Pipeline -->
+        <section class="use-case">
+            <div class="use-case-content">
+                <span class="badge">RETRIEVAL-AUGMENTED GENERATION</span>
+                <h2>Enterprise Chatbot Data Preparation</h2>
+                <p>End-to-end data preparation for AI chatbots and conversational AI. Transform documents into vector embeddings that power intelligent Q&A systems, customer service bots, and knowledge assistants.</p>
+                <ul class="feature-list">
+                    <li>Semantic chunking with tiktoken accuracy</li>
+                    <li>384-dimensional vector embeddings</li>
+                    <li>Export: ChromaDB, LanceDB, JSONL, FAISS</li>
+                    <li>Single API call or step-by-step pipeline</li>
+                    <li>Zero cloud dependency—air-gap compatible</li>
+                </ul>
+            </div>
+            <div class="flow-diagram">
+                <div class="flow-nodes">
+                    <div class="flow-node input">📄 PDF / DOCX / XLSX</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node process">⚡ Convert + Chunk</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node process">🔢 Generate Embeddings</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node" style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; min-width: 220px;">
+                        <span style="background: #dbeafe; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">JSONL</span>
+                        <span style="background: #dcfce7; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">ChromaDB</span>
+                        <span style="background: #fef3c7; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">LanceDB</span>
+                    </div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node output">🗄️ Vector Database Ready</div>
+                </div>
+                <p class="flow-label">Documents → Chunks → Embeddings → Export Format</p>
+            </div>
+        </section>
+
+        <!-- Use Case 2: Knowledge Management -->
+        <section class="use-case reverse">
+            <div class="use-case-content">
+                <span class="badge">INTELLIGENT DOCUMENT SEARCH</span>
+                <h2>Semantic Search & Knowledge Bases</h2>
+                <p>Build AI-powered internal search engines that understand context and meaning. Convert corporate documents into vector-indexed knowledge bases that power semantic search, HR chatbots, and IT help desks.</p>
+                <ul class="feature-list">
+                    <li>Semantic search—find by meaning, not keywords</li>
+                    <li>HR chatbot knowledge bases for policy Q&A</li>
+                    <li>IT help desk document retrieval</li>
+                    <li>Employee onboarding AI assistants</li>
+                </ul>
+            </div>
+            <div class="flow-diagram">
+                <div class="flow-nodes">
+                    <div class="flow-node input">🗄️ Corporate Documents</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node process">⚡ Convert + Chunk + Embed</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node">🔢 Vector Embeddings</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node process">🗄️ Index in Vector DB</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node output">🤖 AI-Powered Search & Chatbots</div>
+                </div>
+                <p class="flow-label">Documents → Embeddings → Vector DB → Semantic Search</p>
+            </div>
+        </section>
+
+        <!-- Use Case 3: Document Migration -->
+        <section class="use-case">
+            <div class="use-case-content">
+                <span class="badge">LLM TRAINING DATA PIPELINE</span>
+                <h2>AI-Ready Document Migration</h2>
+                <p>Transform legacy document archives into LLM-ready training datasets. Batch convert DOC, XLS, PPT to clean Markdown optimized for fine-tuning, in-context learning, and prompt engineering workflows.</p>
+                <ul class="feature-list">
+                    <li>Bulk processing with async webhooks</li>
+                    <li>Token-efficient output for LLM context windows</li>
+                    <li>Preserves semantic structure for fine-tuning</li>
+                    <li>Audit-ready request ID tracking</li>
+                </ul>
+            </div>
+            <div class="flow-diagram">
+                <div class="flow-nodes">
+                    <div class="flow-node input">📁 Legacy Archive (ZIP)</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node process">⚡ API: /api/batch/convert</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node">🔔 Webhook Callback</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node output">📦 Converted ZIP (Markdown)</div>
+                </div>
+                <p class="flow-label">Legacy Docs → Async Pipeline → LLM-Ready Markdown</p>
+            </div>
+        </section>
+
+        <!-- Use Case 4: Compliance -->
+        <section class="use-case reverse">
+            <div class="use-case-content">
+                <span class="badge">HIPAA • SOC 2 • GDPR READY</span>
+                <h2>Privacy-First AI for Regulated Industries</h2>
+                <p>Build AI chatbots and document intelligence systems for healthcare, finance, and legal without cloud data exposure. True Zero Data Retention architecture meets the strictest compliance requirements.</p>
+                <ul class="feature-list">
+                    <li>Ephemeral processing—zero persistence layer</li>
+                    <li>Air-gap deployment for classified environments</li>
+                    <li>Audit trail without document content logging</li>
+                    <li>No BAA required—data never leaves your infra</li>
+                </ul>
+            </div>
+            <div class="flow-diagram">
+                <div class="flow-nodes">
+                    <div class="flow-node input">📄 Sensitive Document</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node process">🔒 Local Processing</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node">📝 Extracted Content</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node process">🗑️ Immediate Deletion</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node output">✅ Audit Log Only</div>
+                </div>
+                <p class="flow-label">Process → Extract → Delete → No Trace</p>
+            </div>
+        </section>
+
+        <!-- Use Case 5: Content Publishing -->
+        <section class="use-case">
+            <div class="use-case-content">
+                <span class="badge">AUTONOMOUS AI AGENTS</span>
+                <h2>Document Processing for AI Agents</h2>
+                <p>Enable autonomous AI agents to process and understand documents. Integrate with MCP servers, LangChain, and agent frameworks to give AI systems document intelligence capabilities.</p>
+                <ul class="feature-list">
+                    <li>MCP server integration for Claude agents</li>
+                    <li>LangChain-compatible REST API</li>
+                    <li>CI/CD pipeline automation</li>
+                    <li>Agentic workflow document tools</li>
+                </ul>
+            </div>
+            <div class="flow-diagram">
+                <div class="flow-nodes">
+                    <div class="flow-node input">🤖 AI Agent / LangChain</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node process">⚡ MCP / REST API</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node">📝 Structured Document Data</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node process">🧠 Agent Processing</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node output">✅ Autonomous Task Complete</div>
+                </div>
+                <p class="flow-label">AI Agent → Document Tool → Structured Data → Action</p>
+            </div>
+        </section>
+
+        <!-- CTA -->
+        <section class="cta-section">
+            <h2>Production-Ready Document Intelligence</h2>
+            <p style="color: var(--text-light);">Enterprise architecture. Zero data retention. Full API access for integration testing.</p>
+            <div class="cta-buttons">
+                <a href="/convert" class="btn btn-primary">Try Live Demo</a>
+                <a href="/architecture" class="btn btn-secondary">View Architecture</a>
+                <a href="/api/docs" class="btn btn-secondary">API Documentation</a>
+            </div>
+        </section>
+
+        <footer>
+            <p>&copy; 2025 paulocadias.com - All processing happens locally. Zero data retention.</p>
+        </footer>
+    </div>
+</body>
+</html>

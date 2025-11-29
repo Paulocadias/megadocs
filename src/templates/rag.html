@@ -1,0 +1,675 @@
+{% extends "base.html" %}
+
+{% block title %}RAG Pipeline - Document to Vector DB | MegaDoc{% endblock %}
+{% block description %}Complete RAG preparation pipeline. Convert documents, chunk with tiktoken, generate embeddings, and export to ChromaDB, LanceDB, or JSONL.{% endblock %}
+
+{% block extra_head %}
+<style>
+    .app-container { max-width: 1000px; }
+
+    /* Hero */
+    .hero { text-align: center; margin-bottom: 2rem; }
+    .hero h1 { font-size: 2rem; margin-bottom: 0.5rem; }
+    .hero p { color: var(--text-light); }
+
+    /* Pipeline Steps Visual */
+    .pipeline-visual {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 2rem 0;
+        flex-wrap: wrap;
+    }
+    .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 1rem;
+        background: var(--surface);
+        border-radius: 12px;
+        border: 2px solid var(--border);
+        min-width: 100px;
+        transition: all 0.3s;
+    }
+    .step.active { border-color: var(--primary); background: #eff6ff; }
+    .step.complete { border-color: var(--success); background: #f0fdf4; }
+    .step .icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+    .step .label { font-size: 0.8rem; font-weight: 600; }
+    .step .status { font-size: 0.7rem; color: var(--text-light); margin-top: 0.25rem; }
+    .step-arrow { color: var(--text-light); font-size: 1.25rem; }
+
+    /* Upload Section */
+    .upload-section {
+        background: var(--surface);
+        border-radius: 12px;
+        padding: 2rem;
+        margin-bottom: 2rem;
+    }
+    .upload-area {
+        border: 2px dashed var(--border);
+        border-radius: 8px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .upload-area:hover { border-color: var(--primary); background: #f8fafc; }
+    .upload-area.dragover { border-color: var(--primary); background: #eff6ff; }
+    .upload-icon { font-size: 2.5rem; margin-bottom: 1rem; }
+
+    /* Config Panel */
+    .config-panel {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border);
+    }
+    .config-group label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+        color: var(--text-light);
+    }
+    .config-group select, .config-group input {
+        width: 100%;
+        padding: 0.625rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 0.9rem;
+    }
+
+    /* Results Section */
+    .results-section { display: none; }
+    .results-section.visible { display: block; }
+
+    /* Stats Bar */
+    .stats-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    .stat-card {
+        background: var(--surface);
+        padding: 1rem;
+        border-radius: 8px;
+        text-align: center;
+    }
+    .stat-card .value { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+    .stat-card .label { font-size: 0.8rem; color: var(--text-light); }
+
+    /* Tabs */
+    .tabs {
+        display: flex;
+        gap: 0;
+        background: var(--bg);
+        border-radius: 8px;
+        padding: 4px;
+        margin-bottom: 1rem;
+        width: fit-content;
+    }
+    .tab-btn {
+        padding: 0.5rem 1rem;
+        border: none;
+        background: transparent;
+        color: var(--text-light);
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: all 0.2s;
+    }
+    .tab-btn.active { background: white; color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+    /* Tab Content */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Chunks Preview */
+    .chunks-grid {
+        display: grid;
+        gap: 1rem;
+        max-height: 500px;
+        overflow-y: auto;
+    }
+    .chunk-card {
+        background: var(--surface);
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+    }
+    .chunk-header {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.75rem 1rem;
+        background: var(--bg);
+        border-bottom: 1px solid var(--border);
+        font-size: 0.8rem;
+    }
+    .chunk-id { font-weight: 600; color: var(--primary); }
+    .chunk-tokens { color: var(--text-light); }
+    .chunk-body {
+        padding: 1rem;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        max-height: 120px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+    }
+    .chunk-embedding {
+        padding: 0.5rem 1rem;
+        background: #f5f3ff;
+        border-top: 1px solid var(--border);
+        font-size: 0.75rem;
+        color: #6b21a8;
+    }
+
+    /* Export Section */
+    .export-section {
+        background: var(--surface);
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+    .export-buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .export-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        background: white;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .export-btn:hover { border-color: var(--primary); }
+    .export-btn.active { border-color: var(--primary); background: #eff6ff; }
+    .export-btn .icon { font-size: 1.25rem; }
+
+    /* Code Preview */
+    .code-preview {
+        background: #1e293b;
+        border-radius: 8px;
+        padding: 1rem;
+        overflow-x: auto;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    .code-preview pre {
+        margin: 0;
+        color: #e2e8f0;
+        font-size: 0.8rem;
+        line-height: 1.5;
+    }
+
+    /* Action Buttons */
+    .action-bar {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+    }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; }
+    .btn-secondary { background: white; color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--bg); }
+
+    /* Loading */
+    .loading { opacity: 0.6; pointer-events: none; }
+    .spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Embedding Info */
+    .embedding-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+        font-size: 0.85rem;
+    }
+    .embedding-info .model { font-weight: 600; color: #6b21a8; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<section class="hero">
+    <h1>RAG Preparation Pipeline</h1>
+    <p>Upload a document, chunk it, generate embeddings, and export to your vector database</p>
+</section>
+
+<!-- Embedding Info -->
+<div class="embedding-info">
+    <span>Embedding Model:</span>
+    <span class="model" id="embeddingModel">Loading...</span>
+    <span id="embeddingDims"></span>
+</div>
+
+<!-- Pipeline Visual -->
+<div class="pipeline-visual">
+    <div class="step" id="step1">
+        <span class="icon">📄</span>
+        <span class="label">Upload</span>
+        <span class="status">Waiting</span>
+    </div>
+    <span class="step-arrow">→</span>
+    <div class="step" id="step2">
+        <span class="icon">📝</span>
+        <span class="label">Convert</span>
+        <span class="status">Pending</span>
+    </div>
+    <span class="step-arrow">→</span>
+    <div class="step" id="step3">
+        <span class="icon">✂️</span>
+        <span class="label">Chunk</span>
+        <span class="status">Pending</span>
+    </div>
+    <span class="step-arrow">→</span>
+    <div class="step" id="step4">
+        <span class="icon">🧠</span>
+        <span class="label">Embed</span>
+        <span class="status">Pending</span>
+    </div>
+    <span class="step-arrow">→</span>
+    <div class="step" id="step5">
+        <span class="icon">🗄️</span>
+        <span class="label">Export</span>
+        <span class="status">Pending</span>
+    </div>
+</div>
+
+<!-- Upload Section -->
+<section class="upload-section">
+    <div class="upload-area" id="uploadArea">
+        <div class="upload-icon">📁</div>
+        <p><strong>Drop your document here</strong> or click to browse</p>
+        <p style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.5rem;">
+            Supports PDF, Word, Excel, PowerPoint, HTML, and more
+        </p>
+        <input type="file" id="fileInput" hidden accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.html,.htm,.txt,.csv,.json,.xml,.epub">
+    </div>
+    <div id="selectedFile" style="display: none; margin-top: 1rem; padding: 1rem; background: #f0fdf4; border-radius: 8px;">
+        <strong id="fileName"></strong>
+        <span id="fileSize" style="color: var(--text-light); margin-left: 1rem;"></span>
+    </div>
+
+    <!-- Configuration -->
+    <div class="config-panel">
+        <div class="config-group">
+            <label>Chunk Size (tokens)</label>
+            <select id="chunkSize">
+                <option value="256">256 tokens</option>
+                <option value="512" selected>512 tokens (recommended)</option>
+                <option value="1024">1024 tokens</option>
+                <option value="2048">2048 tokens</option>
+            </select>
+        </div>
+        <div class="config-group">
+            <label>Chunk Overlap</label>
+            <select id="chunkOverlap">
+                <option value="0">No overlap</option>
+                <option value="50" selected>50 tokens</option>
+                <option value="100">100 tokens</option>
+                <option value="200">200 tokens</option>
+            </select>
+        </div>
+        <div class="config-group">
+            <label>Export Format</label>
+            <select id="exportFormat">
+                <option value="chromadb" selected>ChromaDB</option>
+                <option value="lancedb">LanceDB</option>
+                <option value="jsonl">JSONL</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="action-bar">
+        <button class="btn btn-primary" id="runPipeline" disabled>
+            <span class="btn-text">Run Pipeline</span>
+            <span class="btn-loading" style="display: none;"><span class="spinner"></span> Processing...</span>
+        </button>
+        <button class="btn btn-secondary" id="resetBtn" style="display: none;">Start Over</button>
+    </div>
+</section>
+
+<!-- Results Section -->
+<section class="results-section" id="resultsSection">
+    <!-- Stats -->
+    <div class="stats-bar">
+        <div class="stat-card">
+            <div class="value" id="statChunks">0</div>
+            <div class="label">Chunks Created</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="statTokens">0</div>
+            <div class="label">Total Tokens</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="statDims">384</div>
+            <div class="label">Vector Dimensions</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="statFormat">-</div>
+            <div class="label">Export Format</div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <button class="tab-btn active" data-tab="chunks">Chunks Preview</button>
+        <button class="tab-btn" data-tab="export">Export Data</button>
+    </div>
+
+    <!-- Chunks Tab -->
+    <div class="tab-content active" id="chunksTab">
+        <div class="chunks-grid" id="chunksGrid"></div>
+    </div>
+
+    <!-- Export Tab -->
+    <div class="tab-content" id="exportTab">
+        <div class="export-section">
+            <div class="export-buttons">
+                <button class="export-btn active" data-format="chromadb">
+                    <span class="icon">🟣</span> ChromaDB
+                </button>
+                <button class="export-btn" data-format="lancedb">
+                    <span class="icon">🟢</span> LanceDB
+                </button>
+                <button class="export-btn" data-format="jsonl">
+                    <span class="icon">📄</span> JSONL
+                </button>
+            </div>
+            <div class="code-preview">
+                <pre id="exportCode">Select an export format to see the output</pre>
+            </div>
+            <div class="action-bar">
+                <button class="btn btn-primary" id="downloadExport">Download Export</button>
+                <button class="btn btn-secondary" id="copyExport">Copy to Clipboard</button>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // State
+    let selectedFile = null;
+    let pipelineResult = null;
+    const csrfToken = '{{ csrf_token }}';
+
+    // DOM Elements
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const runBtn = document.getElementById('runPipeline');
+    const resetBtn = document.getElementById('resetBtn');
+    const resultsSection = document.getElementById('resultsSection');
+
+    // Load embedding info
+    async function loadEmbeddingInfo() {
+        try {
+            const res = await fetch('/api/embedding-info');
+            const data = await res.json();
+            document.getElementById('embeddingModel').textContent = data.model;
+            document.getElementById('embeddingDims').textContent = `(${data.dimensions} dimensions)`;
+        } catch (e) {
+            document.getElementById('embeddingModel').textContent = 'Error loading';
+        }
+    }
+    loadEmbeddingInfo();
+
+    // File upload handling
+    uploadArea.addEventListener('click', () => fileInput.click());
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+    uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) handleFile(e.target.files[0]);
+    });
+
+    function handleFile(file) {
+        selectedFile = file;
+        document.getElementById('selectedFile').style.display = 'block';
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = formatSize(file.size);
+        runBtn.disabled = false;
+        updateStep(1, 'complete', 'Ready');
+    }
+
+    function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    }
+
+    function updateStep(step, status, text) {
+        const el = document.getElementById('step' + step);
+        el.className = 'step ' + status;
+        el.querySelector('.status').textContent = text;
+    }
+
+    // Run pipeline
+    runBtn.addEventListener('click', async () => {
+        if (!selectedFile) return;
+
+        const btnText = runBtn.querySelector('.btn-text');
+        const btnLoading = runBtn.querySelector('.btn-loading');
+        btnText.style.display = 'none';
+        btnLoading.style.display = 'inline-flex';
+        runBtn.disabled = true;
+
+        try {
+            // Update steps
+            updateStep(2, 'active', 'Converting...');
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('chunk_size', document.getElementById('chunkSize').value);
+            formData.append('overlap', document.getElementById('chunkOverlap').value);
+            formData.append('export_format', document.getElementById('exportFormat').value);
+
+            const res = await fetch('/api/pipeline', {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': csrfToken },
+                body: formData
+            });
+
+            if (!res.ok) throw new Error('Pipeline failed');
+
+            pipelineResult = await res.json();
+
+            // Update all steps to complete
+            updateStep(2, 'complete', 'Done');
+            updateStep(3, 'complete', 'Done');
+            updateStep(4, 'complete', 'Done');
+            updateStep(5, 'complete', 'Done');
+
+            // Show results
+            displayResults(pipelineResult);
+            resultsSection.classList.add('visible');
+            resetBtn.style.display = 'inline-block';
+
+        } catch (e) {
+            alert('Error: ' + e.message);
+            updateStep(2, '', 'Failed');
+        } finally {
+            btnText.style.display = 'inline';
+            btnLoading.style.display = 'none';
+            runBtn.disabled = false;
+        }
+    });
+
+    function displayResults(data) {
+        // Stats
+        document.getElementById('statChunks').textContent = data.stats?.chunks || data.pipeline?.chunks_count || 0;
+        document.getElementById('statTokens').textContent = (data.stats?.total_tokens || 0).toLocaleString();
+        document.getElementById('statDims').textContent = data.export?.embedding_info?.dimensions || 100;
+        document.getElementById('statFormat').textContent = (data.pipeline?.output_format || data.pipeline?.export_format || 'jsonl').toUpperCase();
+
+        // Chunks grid
+        const grid = document.getElementById('chunksGrid');
+        grid.innerHTML = '';
+
+        // Get chunks based on format
+        let chunks = [];
+        if (data.export?.records) {
+            chunks = data.export.records;
+        } else if (data.export?.ids) {
+            chunks = data.export.ids.map((id, i) => ({
+                id: id,
+                text: data.export.documents[i],
+                tokens: data.export.metadatas?.[i]?.tokens || 0,
+                embedding: data.export.embeddings?.[i]
+            }));
+        } else if (data.export?.data) {
+            // JSONL format - parse the data
+            try {
+                const lines = data.export.data.trim().split('\n');
+                chunks = lines.map(line => JSON.parse(line));
+            } catch (e) {
+                console.error('Error parsing JSONL:', e);
+            }
+        }
+
+        chunks.slice(0, 20).forEach((chunk, i) => {
+            const card = document.createElement('div');
+            card.className = 'chunk-card';
+            const embedding = chunk.embedding || chunk.vector;
+            card.innerHTML = `
+                <div class="chunk-header">
+                    <span class="chunk-id">${chunk.id !== undefined ? 'Chunk ' + chunk.id : 'Chunk ' + i}</span>
+                    <span class="chunk-tokens">${chunk.tokens || '?'} tokens</span>
+                </div>
+                <div class="chunk-body">${escapeHtml(chunk.text?.substring(0, 500) || '')}</div>
+                ${embedding ? `<div class="chunk-embedding">Vector: [${embedding.slice(0, 5).map(v => v.toFixed(4)).join(', ')}...] (${embedding.length} dims)</div>` : ''}
+            `;
+            grid.appendChild(card);
+        });
+
+        if (chunks.length > 20) {
+            const more = document.createElement('p');
+            more.style.cssText = 'text-align: center; color: var(--text-light); padding: 1rem;';
+            more.textContent = `+ ${chunks.length - 20} more chunks (download to see all)`;
+            grid.appendChild(more);
+        }
+
+        // Export code preview
+        updateExportPreview(data.pipeline?.output_format || data.pipeline?.export_format || 'jsonl');
+    }
+
+    function updateExportPreview(format) {
+        if (!pipelineResult) return;
+        const code = document.getElementById('exportCode');
+        if (pipelineResult.export?.data) {
+            code.textContent = pipelineResult.export.data.substring(0, 5000);
+        } else {
+            code.textContent = JSON.stringify(pipelineResult.export, null, 2).substring(0, 5000);
+        }
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById(btn.dataset.tab + 'Tab').classList.add('active');
+        });
+    });
+
+    // Export format buttons
+    document.querySelectorAll('.export-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.export-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            updateExportPreview(btn.dataset.format);
+        });
+    });
+
+    // Download export
+    document.getElementById('downloadExport').addEventListener('click', () => {
+        if (!pipelineResult) return;
+        const format = document.getElementById('exportFormat').value;
+        let content;
+        if (pipelineResult.export?.data) {
+            content = pipelineResult.export.data;
+        } else {
+            content = JSON.stringify(pipelineResult.export, null, 2);
+        }
+        const blob = new Blob([content], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `export.${format === 'jsonl' ? 'jsonl' : 'json'}`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    // Copy export
+    document.getElementById('copyExport').addEventListener('click', async () => {
+        if (!pipelineResult) return;
+        let content;
+        if (pipelineResult.export?.data) {
+            content = pipelineResult.export.data;
+        } else {
+            content = JSON.stringify(pipelineResult.export, null, 2);
+        }
+        await navigator.clipboard.writeText(content);
+        alert('Copied to clipboard!');
+    });
+
+    // Reset
+    resetBtn.addEventListener('click', () => {
+        selectedFile = null;
+        pipelineResult = null;
+        fileInput.value = '';
+        document.getElementById('selectedFile').style.display = 'none';
+        resultsSection.classList.remove('visible');
+        resetBtn.style.display = 'none';
+        runBtn.disabled = true;
+        [1,2,3,4,5].forEach(i => updateStep(i, '', i === 1 ? 'Waiting' : 'Pending'));
+    });
+</script>
+{% endblock %}
