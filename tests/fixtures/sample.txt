@@ -1,0 +1,19 @@
+# Sample Document for Testing
+
+This is a test document used by the MegaDoc test suite.
+
+## Section 1: Introduction
+
+The MegaDoc platform converts various document formats to Markdown.
+It supports PDF, Word, Excel, PowerPoint, and image files.
+
+## Section 2: Features
+
+- Universal document conversion
+- RAG pipeline with semantic chunking
+- Multi-model AI chat
+- Enterprise security features
+
+## Section 3: Conclusion
+
+This sample document demonstrates the conversion capabilities.
