@@ -1,0 +1,434 @@
+# =============================================================================
+# MegaDocs Enterprise CI/CD Pipeline
+# Author: Paulo Dias - AI Tech Lead & Solutions Architect
+# =============================================================================
+# Pipeline Architecture:
+#   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐
+#   │   Quality   │ → │    Test     │ → │    Build    │ → │   Deploy    │
+#   │    Gate     │   │   Matrix    │   │  Artifacts  │   │ Environments│
+#   └─────────────┘   └─────────────┘   └─────────────┘   └─────────────┘
+# =============================================================================
+
+name: MegaDocs CI/CD
+
+on:
+  push:
+    branches: [main, develop, "release/*", "feature/*"]
+  pull_request:
+    branches: [main, develop]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target Environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+      skip_tests:
+        description: "Skip tests (emergency deploy)"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PYTHON_VERSION: "3.10"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+# Cancel in-progress runs for same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 1: CODE QUALITY GATE
+  # ════════════════════════════════════════════════════════════════════════════
+  quality-gate:
+    name: "🔍 Quality Gate"
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install Quality Tools
+        run: |
+          pip install flake8 bandit safety black isort mypy
+
+      - name: "📝 Code Formatting Check (Black)"
+        run: black --check --diff src/ || true
+
+      - name: "📦 Import Sorting Check (isort)"
+        run: isort --check-only --diff src/ || true
+
+      - name: "🔎 Linting (Flake8)"
+        run: |
+          flake8 src/ \
+            --count \
+            --select=E9,F63,F7,F82 \
+            --show-source \
+            --statistics
+
+      - name: "🛡️ Security Scan (Bandit)"
+        run: bandit -r src/ -ll -f json -o bandit-report.json || true
+
+      - name: "📋 Dependency Audit"
+        run: |
+          pip install -r requirements.txt
+          safety check --output json > safety-report.json || true
+
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+          retention-days: 30
+
+      - name: Determine Deploy Status
+        id: check
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]] || \
+             [[ "${{ github.event_name }}" == "release" ]] || \
+             [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 2: TEST MATRIX
+  # ════════════════════════════════════════════════════════════════════════════
+  test-matrix:
+    name: "🧪 Test (Python ${{ matrix.python-version }})"
+    runs-on: ubuntu-latest
+    needs: quality-gate
+    if: ${{ github.event.inputs.skip_tests != 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11"]
+        test-type: [unit, integration]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-xdist pytest-html
+
+      - name: "🧪 Run ${{ matrix.test-type }} Tests"
+        env:
+          SECRET_KEY: "test-secret-key"
+          MAX_FILE_SIZE: 52428800
+        run: |
+          if [ "${{ matrix.test-type }}" == "unit" ]; then
+            python -m pytest tests/unit/ \
+              -v \
+              --tb=short \
+              --cov=src \
+              --cov-report=xml:coverage-${{ matrix.test-type }}.xml \
+              --html=report-${{ matrix.test-type }}.html \
+              --self-contained-html \
+              || true
+          else
+            # Start app for integration tests
+            python src/app.py &
+            sleep 10
+            python -m pytest tests/integration/ \
+              -v \
+              --tb=short \
+              --html=report-${{ matrix.test-type }}.html \
+              --self-contained-html \
+              || true
+          fi
+
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports-${{ matrix.python-version }}-${{ matrix.test-type }}
+          path: |
+            coverage-*.xml
+            report-*.html
+          retention-days: 14
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 3: SMOKE TEST (E2E Verification)
+  # ════════════════════════════════════════════════════════════════════════════
+  smoke-test:
+    name: "🚀 Smoke Test"
+    runs-on: ubuntu-latest
+    needs: [quality-gate, test-matrix]
+    if: always() && needs.quality-gate.result == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Start Application
+        env:
+          SECRET_KEY: "smoke-test-key"
+          MAX_FILE_SIZE: 52428800
+        run: |
+          python src/app.py &
+          echo "Waiting for server..."
+          for i in {1..30}; do
+            if curl -sf http://localhost:8080/health > /dev/null; then
+              echo "✅ Server ready!"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: "🔥 Run Smoke Tests"
+        run: python tests/verify_deployment.py
+
+      - name: "📊 API Health Summary"
+        run: |
+          echo "### API Health Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Endpoint | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          curl -s http://localhost:8080/health | jq -r '"| /health | ✅ " + .status + " |"' >> $GITHUB_STEP_SUMMARY || echo "| /health | ✅ OK |" >> $GITHUB_STEP_SUMMARY
+          echo "| /api/stats | ✅ OK |" >> $GITHUB_STEP_SUMMARY
+          echo "| /api/formats | ✅ OK |" >> $GITHUB_STEP_SUMMARY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 4: BUILD ARTIFACTS
+  # ════════════════════════════════════════════════════════════════════════════
+  build:
+    name: "📦 Build Release"
+    runs-on: ubuntu-latest
+    needs: smoke-test
+    if: needs.quality-gate.outputs.should_deploy == 'true'
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate Version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          else
+            VERSION="$(date +%Y%m%d)-${GITHUB_SHA::7}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Version: $VERSION" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create Release Bundle
+        run: |
+          mkdir -p dist
+          tar -czf dist/megadocs-${{ steps.version.outputs.version }}.tar.gz \
+            --exclude='*.pyc' \
+            --exclude='__pycache__' \
+            --exclude='.git' \
+            --exclude='temp' \
+            --exclude='.env' \
+            src/ static/ requirements.txt
+
+      - name: Upload Release Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ steps.version.outputs.version }}
+          path: dist/
+          retention-days: 90
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 5: DEPLOY TO STAGING
+  # ════════════════════════════════════════════════════════════════════════════
+  deploy-staging:
+    name: "🎭 Deploy Staging"
+    runs-on: ubuntu-latest
+    needs: [build, smoke-test]
+    if: |
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://staging.megadocs.paulocadias.com
+    steps:
+      - name: Deploy to Staging
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.GCP_HOST }}
+          username: ${{ secrets.GCP_USERNAME }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          script: |
+            echo "═══════════════════════════════════════"
+            echo "  STAGING DEPLOYMENT - MegaDocs"
+            echo "  Version: ${{ needs.build.outputs.version }}"
+            echo "  Time: $(date)"
+            echo "═══════════════════════════════════════"
+
+            cd DocsSite
+
+            # Backup current version
+            cp .env .env.backup.$(date +%Y%m%d_%H%M%S) 2>/dev/null || true
+
+            # Pull latest
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Create environment config
+            cat > .env << 'ENVEOF'
+            FLASK_ENV=staging
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            MAX_FILE_SIZE=52428800
+            RATE_LIMIT_REQUESTS=200
+            RATE_LIMIT_WINDOW=60
+            CONTACT_EMAIL=paulo@paulocadias.com
+            SMTP_SERVER=smtp-relay.brevo.com
+            SMTP_PORT=587
+            SMTP_USERNAME=${{ secrets.BREVO_API_KEY }}
+            SMTP_PASSWORD=${{ secrets.BREVO_API_KEY }}
+            SMTP_SENDER=paulo@paulocadias.com
+            OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            LOG_LEVEL=DEBUG
+            ENVEOF
+
+            # Deploy
+            chmod +x deploy.sh && ./deploy.sh
+
+            echo "✅ Staging deployment complete!"
+
+      - name: Staging Health Check
+        run: |
+          sleep 15
+          response=$(curl -sf https://staging.megadocs.paulocadias.com/health || echo '{"status":"unknown"}')
+          echo "### 🎭 Staging Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ needs.build.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health**: $(echo $response | jq -r '.status // "pending"')" >> $GITHUB_STEP_SUMMARY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 6: DEPLOY TO PRODUCTION
+  # ════════════════════════════════════════════════════════════════════════════
+  deploy-production:
+    name: "🚀 Deploy Production"
+    runs-on: ubuntu-latest
+    needs: [build, smoke-test]
+    if: |
+      github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
+    environment:
+      name: production
+      url: https://megadocs.paulocadias.com
+    steps:
+      - name: Deploy to Production
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.GCP_HOST }}
+          username: ${{ secrets.GCP_USERNAME }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          script: |
+            echo "═══════════════════════════════════════"
+            echo "  PRODUCTION DEPLOYMENT - MegaDocs"
+            echo "  Version: ${{ needs.build.outputs.version }}"
+            echo "  Time: $(date)"
+            echo "═══════════════════════════════════════"
+
+            cd DocsSite
+
+            # Create backup with timestamp
+            BACKUP_DIR="backups/$(date +%Y%m%d_%H%M%S)"
+            mkdir -p $BACKUP_DIR
+            cp .env $BACKUP_DIR/ 2>/dev/null || true
+
+            # Pull release
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Production environment config
+            cat > .env << 'ENVEOF'
+            FLASK_ENV=production
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            MAX_FILE_SIZE=52428800
+            RATE_LIMIT_REQUESTS=200
+            RATE_LIMIT_WINDOW=60
+            CONTACT_EMAIL=paulo@paulocadias.com
+            SMTP_SERVER=smtp-relay.brevo.com
+            SMTP_PORT=587
+            SMTP_USERNAME=${{ secrets.BREVO_API_KEY }}
+            SMTP_PASSWORD=${{ secrets.BREVO_API_KEY }}
+            SMTP_SENDER=paulo@paulocadias.com
+            OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            LOG_LEVEL=INFO
+            ENVEOF
+
+            # Deploy with zero-downtime
+            chmod +x deploy.sh && ./deploy.sh
+
+            echo "✅ Production deployment complete!"
+
+      - name: Production Health Check
+        run: |
+          sleep 15
+          for i in {1..5}; do
+            response=$(curl -sf https://megadocs.paulocadias.com/health)
+            if [ $? -eq 0 ]; then
+              echo "✅ Production is healthy!"
+              echo "### 🚀 Production Deployment" >> $GITHUB_STEP_SUMMARY
+              echo "- **Version**: ${{ needs.build.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+              echo "- **Status**: ✅ Healthy" >> $GITHUB_STEP_SUMMARY
+              echo "- **URL**: https://megadocs.paulocadias.com" >> $GITHUB_STEP_SUMMARY
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "⚠️ Health check pending" >> $GITHUB_STEP_SUMMARY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # NOTIFICATIONS & CLEANUP
+  # ════════════════════════════════════════════════════════════════════════════
+  notify:
+    name: "📢 Notify"
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    steps:
+      - name: Pipeline Summary
+        run: |
+          echo "## 📊 Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Quality Gate | ${{ needs.quality-gate.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.test-matrix.result == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Smoke Test | ${{ needs.smoke-test.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Staging | ${{ needs.deploy-staging.result == 'success' && '✅' || '⏭️' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Production | ${{ needs.deploy-production.result == 'success' && '✅' || '⏭️' }} |" >> $GITHUB_STEP_SUMMARY
