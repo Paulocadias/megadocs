@@ -1,0 +1,41 @@
+name: CI - Test & Verify
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    name: Run System Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest requests
+
+    - name: Start Application (Background)
+      env:
+        SECRET_KEY: "ci-test-key"
+        MAX_FILE_SIZE: 52428800
+      run: |
+        # Start Flask app in background
+        python src/app.py &
+        echo "Waiting for server to start..."
+        sleep 5
+
+    - name: Run Verification Script
+      run: |
+        python tests/verify_deployment.py

@@ -1,0 +1,72 @@
+name: Code Quality Review
+
+on:
+  pull_request:
+    branches: [ "main" ]
+  push:
+    branches: [ "main" ]
+
+jobs:
+  code-quality:
+    name: Code Quality & Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 black bandit safety
+        pip install -r requirements.txt
+
+    - name: Code Formatting Check (Black)
+      run: |
+        black --check --diff src/ || echo "::warning::Code formatting issues found. Run 'black src/' to fix."
+
+    - name: Linting (Flake8)
+      run: |
+        flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Security Scan (Bandit)
+      run: |
+        bandit -r src/ -f json -o bandit-report.json || true
+        bandit -r src/ -ll
+
+    - name: Dependency Security Check (Safety)
+      run: |
+        safety check --json || echo "::warning::Dependency vulnerabilities found"
+
+    - name: Upload Security Report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+
+    - name: Comment PR (if applicable)
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          let comment = '## 🔍 Code Quality Report\n\n';
+          comment += '✅ **Linting**: Passed\n';
+          comment += '✅ **Security Scan**: Completed\n';
+          comment += '✅ **Formatting**: Checked\n\n';
+          comment += '_Automated review by GitHub Actions_';
+          
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });

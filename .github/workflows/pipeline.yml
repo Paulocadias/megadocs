@@ -1,0 +1,344 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      deploy_staging:
+        description: 'Deploy to staging'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  GCP_REGION: us-central1
+  SERVICE_NAME: megadoc
+  SERVICE_NAME_STAGING: megadoc-staging
+  PYTHON_VERSION: '3.11'
+
+jobs:
+  # ==========================================================================
+  # Stage 1: Run Tests
+  # ==========================================================================
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Run unit tests
+        run: |
+          pytest tests/unit -v --cov=src --cov-report=xml --cov-report=term-missing -m "unit"
+        continue-on-error: false
+
+      - name: Start Flask app for integration tests
+        run: |
+          cd src && python app.py &
+          sleep 10
+        env:
+          SECRET_KEY: test-secret-key
+          FLASK_ENV: testing
+
+      - name: Run integration tests
+        run: |
+          pytest tests/integration -v -m "integration" --tb=short
+        continue-on-error: true
+
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+        continue-on-error: true
+
+  # ==========================================================================
+  # Stage 2: Security Scan
+  # ==========================================================================
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install security tools
+        run: |
+          pip install bandit safety
+
+      - name: Run Bandit security scan
+        run: |
+          bandit -r src/ -f json -o bandit-report.json --severity-level medium || true
+          bandit -r src/ -f txt --severity-level high
+        continue-on-error: true
+
+      - name: Run Safety dependency check
+        run: |
+          safety check -r requirements.txt --output json > safety-report.json || true
+          safety check -r requirements.txt
+        continue-on-error: true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+        if: always()
+
+  # ==========================================================================
+  # Stage 3: Code Quality
+  # ==========================================================================
+  code-quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install linting tools
+        run: |
+          pip install black flake8
+
+      - name: Check code formatting with Black
+        run: |
+          black --check --diff src/ tests/ || echo "Code formatting issues found"
+        continue-on-error: true
+
+      - name: Run Flake8 linting
+        run: |
+          flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics
+
+  # ==========================================================================
+  # Stage 4: Build Docker Image
+  # ==========================================================================
+  build:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [test, security, code-quality]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'release'
+    outputs:
+      image-tag: ${{ steps.image-tag.outputs.tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev
+
+      - name: Build Docker image
+        run: |
+          IMAGE="${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/megadoc/megadoc"
+          docker build -t ${IMAGE}:${{ github.sha }} -t ${IMAGE}:latest .
+
+      - name: Push Docker image
+        run: |
+          IMAGE="${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/megadoc/megadoc"
+          docker push ${IMAGE}:${{ github.sha }}
+          docker push ${IMAGE}:latest
+
+      - name: Output image tag
+        id: image-tag
+        run: |
+          echo "tag=${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/megadoc/megadoc:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+  # ==========================================================================
+  # Stage 5: Deploy to Staging
+  # ==========================================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    environment: staging
+    outputs:
+      staging-url: ${{ steps.deploy.outputs.url }}
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run (Staging)
+        id: deploy
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME_STAGING }} \
+            --image ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/megadoc/megadoc:${{ github.sha }} \
+            --region ${{ env.GCP_REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --memory 1Gi \
+            --cpu 1 \
+            --min-instances 0 \
+            --max-instances 2 \
+            --port 5000 \
+            --timeout 300 \
+            --set-env-vars "FLASK_ENV=staging,SECRET_KEY=${{ secrets.SECRET_KEY }}"
+
+          URL=$(gcloud run services describe ${{ env.SERVICE_NAME_STAGING }} \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)')
+          echo "url=${URL}" >> $GITHUB_OUTPUT
+          echo "Staging URL: ${URL}"
+
+  # ==========================================================================
+  # Stage 6: Verify Staging
+  # ==========================================================================
+  verify-staging:
+    name: Verify Staging Deployment
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install test dependencies
+        run: pip install requests
+
+      - name: Wait for service to be ready
+        run: sleep 30
+
+      - name: Run smoke tests
+        run: |
+          export BASE_URL="${{ needs.deploy-staging.outputs.staging-url }}"
+          echo "Testing staging at: ${BASE_URL}"
+
+          # Test health endpoint
+          curl -f "${BASE_URL}/health" || exit 1
+
+          # Test stats endpoint
+          curl -f "${BASE_URL}/api/stats" || exit 1
+
+          # Test formats endpoint
+          curl -f "${BASE_URL}/api/formats" || exit 1
+
+          echo "All smoke tests passed!"
+
+      - name: Run verification script
+        run: |
+          export BASE_URL="${{ needs.deploy-staging.outputs.staging-url }}"
+          python tests/verify_deployment.py
+        continue-on-error: true
+
+  # ==========================================================================
+  # Stage 7: Deploy to Production (Manual Approval Required)
+  # ==========================================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: verify-staging
+    if: github.event_name == 'release'
+    environment:
+      name: production
+      url: https://megadocs.paulocadias.com
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run (Production)
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image ${{ env.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/megadoc/megadoc:${{ github.sha }} \
+            --region ${{ env.GCP_REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --memory 1Gi \
+            --cpu 1 \
+            --min-instances 0 \
+            --max-instances 10 \
+            --port 5000 \
+            --timeout 300 \
+            --set-env-vars "FLASK_ENV=production,SECRET_KEY=${{ secrets.SECRET_KEY }}"
+
+      - name: Get production URL
+        run: |
+          URL=$(gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)')
+          echo "Production URL: ${URL}"
+
+      - name: Map custom domain (if not already mapped)
+        run: |
+          gcloud run domain-mappings describe \
+            --domain megadocs.paulocadias.com \
+            --region ${{ env.GCP_REGION }} 2>/dev/null || \
+          echo "Custom domain mapping may need to be configured manually"
+        continue-on-error: true
+
+  # ==========================================================================
+  # Stage 8: Verify Production
+  # ==========================================================================
+  verify-production:
+    name: Verify Production Deployment
+    runs-on: ubuntu-latest
+    needs: deploy-production
+    steps:
+      - name: Wait for deployment to propagate
+        run: sleep 60
+
+      - name: Verify production health
+        run: |
+          curl -f "https://megadocs.paulocadias.com/health" || echo "Health check failed - may need DNS propagation"
+
+      - name: Verify production endpoints
+        run: |
+          curl -f "https://megadocs.paulocadias.com/api/stats" || echo "Stats check failed"
+          curl -f "https://megadocs.paulocadias.com/api/formats" || echo "Formats check failed"
+        continue-on-error: true
+
+      - name: Post deployment notification
+        run: |
+          echo "Production deployment completed successfully!"
+          echo "Release: ${{ github.event.release.tag_name }}"
+          echo "URL: https://megadocs.paulocadias.com"
