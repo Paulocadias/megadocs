@@ -5,6 +5,9 @@ werkzeug>=3.0.0
 requests>=2.31.0
 mcp>=1.0.0
 
+# Pin numpy to avoid scipy compatibility issues
+numpy<2.0
+
 # Document analysis features
 scikit-learn>=1.3.0
 textstat>=0.7.3
