@@ -1,43 +1,54 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Use Cases - Enterprise Document Automation | paulocadias.com</title>
-    <meta name="description" content="Discover how businesses use document conversion for RAG pipelines, knowledge management, compliance, and digital transformation.">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='15' fill='%232563eb'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>MD</text></svg>">
-    <link rel="stylesheet" href="/static/style.css">
+    <title>Use Cases - Multi-Modal AI Platform</title>
+    <meta name="description"
+        content="Discover how businesses use document conversion for RAG pipelines, knowledge management, compliance, and digital transformation.">
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='15' fill='%232563eb'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>MD</text></svg>">
+    {% include 'includes/head_common.html' %}
     <style>
         /* Page-specific styles */
-        .app-container { max-width: 1100px; }
 
         /* Hero */
         .hero {
             text-align: center;
             margin-bottom: 4rem;
         }
+
         .badge {
             display: inline-block;
-            background: #dbeafe;
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
             color: var(--primary);
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
+            padding: 0.5rem 1.25rem;
+            border-radius: 9999px;
             font-size: 0.75rem;
             font-weight: 700;
             letter-spacing: 0.05em;
             margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
         }
+
         .hero h1 {
             font-size: 2.5rem;
             font-weight: 800;
             margin-bottom: 1rem;
-            color: var(--text);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif;
         }
+
         .hero p {
             font-size: 1.1rem;
             color: var(--text-light);
-            max-width: 600px;
+            max-width: 1000px;
             margin: 0 auto;
+            line-height: 1.6;
         }
 
         /* Privacy Banner */
@@ -51,85 +62,280 @@
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 1.5rem;
         }
+
         .privacy-item {
             display: flex;
             align-items: center;
             gap: 0.75rem;
         }
-        .privacy-icon { font-size: 1.5rem; }
-        .privacy-item strong { display: block; font-size: 0.9rem; }
-        .privacy-item span { font-size: 0.8rem; opacity: 0.85; }
+
+        .privacy-icon {
+            font-size: 1.5rem;
+        }
+
+        .privacy-item strong {
+            display: block;
+            font-size: 0.9rem;
+        }
+
+        .privacy-item span {
+            font-size: 0.8rem;
+            opacity: 0.85;
+        }
 
         /* Use Case Section */
         .use-case {
+            display: block;
+            margin-bottom: 4rem;
+        }
+
+        .use-case-content h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        /* Match Architecture page H2 sizing for section headers */
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+        }
+
+        .use-case-content {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .use-case-description {
+            color: var(--text-light);
+            margin-bottom: 1.5rem;
+            min-height: 4.5rem;
+            line-height: 1.7;
+        }
+
+        /* Enhanced Key Capability Box */
+        .key-capability-box {
+            border-radius: 8px;
+            padding: 0.875rem 1.25rem;
+            margin: 1rem 0;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .key-capability-box:hover {
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Two-column layout constraints */
+        .use-cases-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 3rem;
-            margin-bottom: 4rem;
-            align-items: center;
-        }
-        .use-case.reverse { direction: rtl; }
-        .use-case.reverse > * { direction: ltr; }
-        .use-case-content h2 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-        }
-        .use-case-content p {
-            color: var(--text-light);
-            margin-bottom: 1.5rem;
-        }
-        .feature-list {
-            list-style: none;
-        }
-        .feature-list li {
-            padding: 0.5rem 0;
-            padding-left: 1.5rem;
-            position: relative;
-        }
-        .feature-list li::before {
-            content: "✓";
-            position: absolute;
-            left: 0;
-            color: var(--success);
-            font-weight: bold;
+            max-width: 1200px;
+            margin: 0 auto 4rem auto;
+            padding: 0 2rem;
         }
 
-        /* Flow Diagram (LangGraph Style) */
+        .use-case-column {
+            display: flex;
+            flex-direction: column;
+            gap: 3.5rem;
+        }
+
+        .use-case-column .use-case {
+            margin: 0;
+        }
+
+        .use-case-column .use-case-content {
+            padding: 2rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .use-case-column .use-case-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), #10b981);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .use-case-column .use-case-content:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            border-color: rgba(37, 99, 235, 0.2);
+        }
+
+        .use-case-column .use-case-content:hover::before {
+            opacity: 1;
+        }
+
+        /* Category Icons */
+        .use-case-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        }
+
+        .use-case-icon.legal {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        }
+
+        .use-case-icon.healthcare {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        }
+
+        .use-case-icon.finance {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        }
+
+        .use-case-icon.industrial {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        }
+
+        .use-case-icon.autonomous {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        }
+
+        .use-case-icon.knowledge {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        }
+
+        .use-case-icon.grc {
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        }
+
+        .use-case-icon.support {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        }
+
+        .feature-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        .feature-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            padding: 0.35rem 0;
+            white-space: normal;
+            line-height: 1.5;
+        }
+
+        .feature-list li::before {
+            content: "✓";
+            color: var(--success);
+            font-weight: bold;
+            flex-shrink: 0;
+            margin-top: 0.1rem;
+        }
+
+        /* Section dividers */
+        .use-cases-grid+.use-cases-grid {
+            margin-top: 5rem;
+            padding-top: 4rem;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Flow Diagram (Improved) */
         .flow-diagram {
-            background: var(--surface);
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
             border-radius: 12px;
             padding: 2rem;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border);
         }
+
         .flow-nodes {
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 0.75rem;
             align-items: center;
         }
+
         .flow-node {
             background: white;
             border: 2px solid var(--border);
-            padding: 0.75rem 1.5rem;
-            border-radius: 8px;
-            font-weight: 500;
-            font-size: 0.9rem;
-            min-width: 180px;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            min-width: 200px;
             text-align: center;
             position: relative;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
         }
-        .flow-node.input { border-color: var(--primary); background: #eff6ff; }
-        .flow-node.process { border-color: var(--warning); background: #fefce8; }
-        .flow-node.output { border-color: var(--success); background: #f0fdf4; }
+
+        .flow-node:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .flow-node.input {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            color: var(--primary);
+        }
+
+        .flow-node.process {
+            border-color: #10b981;
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            color: #059669;
+        }
+
+        .flow-node.output {
+            border-color: var(--success);
+            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+            color: #059669;
+        }
+
         .flow-arrow {
-            color: var(--text-light);
-            font-size: 1.25rem;
+            color: var(--primary);
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0.25rem 0;
         }
+
         .flow-label {
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             color: var(--text-light);
             text-align: center;
             margin-top: 1rem;
+            font-style: italic;
+        }
+
+        /* Autonomous Agents Layout */
+        .autonomous-section {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        @media (min-width: 900px) {
+            .autonomous-section {
+                grid-template-columns: 1fr 1fr;
+                align-items: start;
+            }
         }
 
         /* CTA Section */
@@ -140,13 +346,18 @@
             border-radius: 12px;
             margin-top: 2rem;
         }
-        .cta-section h2 { margin-bottom: 1rem; }
+
+        .cta-section h2 {
+            margin-bottom: 1rem;
+        }
+
         .cta-buttons {
             display: flex;
             gap: 1rem;
             justify-content: center;
             margin-top: 1.5rem;
         }
+
         .btn {
             padding: 0.875rem 2rem;
             border-radius: 8px;
@@ -154,10 +365,25 @@
             text-decoration: none;
             transition: all 0.2s;
         }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-primary:hover { background: var(--primary-dark); }
-        .btn-secondary { background: white; color: var(--text); border: 1px solid var(--border); }
-        .btn-secondary:hover { background: var(--bg); }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg);
+        }
 
         footer {
             text-align: center;
@@ -167,227 +393,323 @@
         }
 
         @media (max-width: 768px) {
-            .use-case { grid-template-columns: 1fr; }
-            .use-case.reverse { direction: ltr; }
-            .privacy-banner { grid-template-columns: 1fr; }
+            .use-case {
+                grid-template-columns: 1fr;
+            }
+
+            .use-case.reverse {
+                direction: ltr;
+            }
+
+            .privacy-banner {
+                grid-template-columns: 1fr;
+            }
+
+            .use-cases-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+                padding: 0 1rem;
+            }
+
+            .autonomous-section {
+                grid-template-columns: 1fr !important;
+            }
+
+            .flow-node {
+                min-width: 160px;
+                font-size: 0.85rem;
+                padding: 0.75rem 1rem;
+            }
         }
     </style>
 </head>
+
 <body>
-    <!-- Global Header - Outside container for consistent positioning -->
-    <div class="site-header-wrapper">
-        <header class="site-header">
-            <a href="/" class="logo-link">
-                <div class="logo-icon">MD</div>
-                <span class="logo-text">MegaDoc</span>
-            </a>
-            <nav>
-                <a href="/convert">Convert</a>
-                <a href="/rag">RAG Pipeline</a>
-                <a href="/compare">Compare</a>
-                <a href="/architecture">Architecture</a>
-                <a href="/use-cases" class="active">Use Cases</a>
-                <a href="/api/docs">API</a>
-                <a href="/contact">Contact</a>
-            </nav>
-        </header>
-    </div>
+    <!-- Global Header -->
+    {% include 'includes/header.html' %}
 
     <div class="app-container">
         <!-- Hero -->
         <section class="hero">
-            <span class="badge">DOCUMENT INTELLIGENCE • ZERO DATA RETENTION</span>
-            <h1>Data Preparation for AI & Chatbots</h1>
-            <p>Transform enterprise documents into training data for LLMs, knowledge bases for chatbots, and vector embeddings for semantic search—all with privacy-first architecture.</p>
+            <span class="badge">DOCUMENT INTELLIGENCE • EPHEMERAL SESSION STORAGE</span>
+            <h1>Enterprise AI Use Cases</h1>
+            <p>These are representative problems I design architectures for as an AI Architect; MegaDoc is the reference
+                platform I built to implement and validate these patterns.</p>
+            <p>Transform enterprise documents into training data for LLMs, knowledge bases for chatbots, and vector
+                embeddings for semantic search—all with privacy-first architecture.</p>
         </section>
 
-        <!-- Privacy Banner -->
-        <div class="privacy-banner">
-            <div class="privacy-item">
-                <span class="privacy-icon">🔒</span>
-                <div>
-                    <strong>On-Premise</strong>
-                    <span>Deploy on your servers</span>
-                </div>
+        <!-- Universal Use Cases: 2 Columns -->
+        <div class="use-cases-grid">
+
+            <!-- Column 1 -->
+            <div class="use-case-column">
+                <!-- Legal & Compliance -->
+                <section class="use-case" style="margin: 0;">
+                    <div class="use-case-content">
+                        <div class="use-case-icon legal">⚖️</div>
+                        <span class="badge">LEGAL & COMPLIANCE</span>
+                        <h2>Contract Analysis & Red-lining</h2>
+                        <div
+                            style="background: #eff6ff; border-left: 4px solid var(--primary); padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                            <strong style="color: var(--primary); font-size: 0.85rem;">Key Capability:</strong>
+                            <span style="font-size: 0.85rem; color: var(--text);">Precision Contract Review & Risk
+                                Analysis</span>
+                        </div>
+                        <p class="use-case-description">AI-powered contract analysis with strict citation requirements.
+                            Legal domain profile enforces
+                            zero hallucination and explicit source references for compliance and auditability.</p>
+                        <ul class="feature-list">
+                            <li>Contract clause extraction and red-lining</li>
+                            <li>Mandatory citation enforcement</li>
+                            <li>Risk flagging for ambiguous terms</li>
+                            <li>Multi-document comparison for version control</li>
+                        </ul>
+                        <div style="background: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #059669; margin-bottom: 0.25rem;">EXPECTED OUTCOME</div>
+                            <div style="font-size: 0.85rem; color: var(--text);">
+                                <strong>70% reduction</strong> in contract review time • <strong>95%+ accuracy</strong> on clause extraction • <strong>100% citation traceability</strong>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Finance & Fintech -->
+                <section class="use-case" style="margin: 0;">
+                    <div class="use-case-content">
+                        <div class="use-case-icon finance">💰</div>
+                        <span class="badge">FINANCE & FINTECH</span>
+                        <h2>Audit & Fraud Detection</h2>
+                        <div
+                            style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                            <strong style="color: #f59e0b; font-size: 0.85rem;">Key Capability:</strong>
+                            <span style="font-size: 0.85rem; color: var(--text);">Automated Statement Auditing</span>
+                        </div>
+                        <p class="use-case-description">Financial document intelligence with structured data extraction
+                            and pattern analysis. Supports
+                            audit workflows and fraud detection through multi-modal document analysis.</p>
+                        <ul class="feature-list">
+                            <li>Financial statement extraction and analysis</li>
+                            <li>Transaction pattern anomaly detection</li>
+                            <li>Regulatory compliance document review</li>
+                            <li>Audit trail generation with citations</li>
+                        </ul>
+                        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #d97706; margin-bottom: 0.25rem;">EXPECTED OUTCOME</div>
+                            <div style="font-size: 0.85rem; color: var(--text);">
+                                <strong>60% faster</strong> audit preparation • <strong>3x more anomalies</strong> detected vs manual review • <strong>Full audit trail</strong> for regulators
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
-            <div class="privacy-item">
-                <span class="privacy-icon">🗑️</span>
-                <div>
-                    <strong>Zero Retention</strong>
-                    <span>Files deleted instantly</span>
-                </div>
+
+            <!-- Column 2 -->
+            <div class="use-case-column">
+                <!-- Healthcare & Life Sciences -->
+                <section class="use-case" style="margin: 0;">
+                    <div class="use-case-content">
+                        <div class="use-case-icon healthcare">🏥</div>
+                        <span class="badge">HEALTHCARE & LIFE SCIENCES</span>
+                        <h2>Diagnostic Support Assistant</h2>
+                        <div
+                            style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                            <strong style="color: #10b981; font-size: 0.85rem;">Key Capability:</strong>
+                            <span style="font-size: 0.85rem; color: var(--text);">Multi-Modal Medical Imaging
+                                Analysis</span>
+                        </div>
+                        <p class="use-case-description">Multi-modal medical intelligence combining imaging analysis with
+                            clinical documentation. Medical
+                            domain profile ensures safety-first responses and evidence-based recommendations.</p>
+                        <ul class="feature-list">
+                            <li>X-ray and medical image analysis via Vision RAG</li>
+                            <li>Clinical documentation search and retrieval</li>
+                            <li>HIPAA-compliant PII redaction</li>
+                            <li>Safety guideline prioritization</li>
+                        </ul>
+                        <div style="background: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #059669; margin-bottom: 0.25rem;">EXPECTED OUTCOME</div>
+                            <div style="font-size: 0.85rem; color: var(--text);">
+                                <strong>40% faster</strong> diagnostic triage • <strong>99.9% PII redaction</strong> accuracy • <strong>Zero PHI</strong> in model prompts
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Industrial & IoT -->
+                <section class="use-case" style="margin: 0;">
+                    <div class="use-case-content">
+                        <div class="use-case-icon industrial">🏭</div>
+                        <span class="badge">INDUSTRIAL & IOT</span>
+                        <h2>Predictive Maintenance</h2>
+                        <div
+                            style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                            <strong style="color: #10b981; font-size: 0.85rem;">Key Capability:</strong>
+                            <span style="font-size: 0.85rem; color: var(--text);">Visual Defect Recognition</span>
+                        </div>
+                        <p class="use-case-description">Unified maintenance intelligence combining visual defect
+                            detection with technical documentation.
+                            Technical domain profile focuses on specifications, error codes, and procedural accuracy.
+                        </p>
+                        <ul class="feature-list">
+                            <li>Visual defect analysis from equipment photos</li>
+                            <li>Technical manual correlation and retrieval</li>
+                            <li>Error code resolution with exact part matching</li>
+                            <li>Predictive maintenance recommendations</li>
+                        </ul>
+                        <div style="background: #eff6ff; border: 1px solid #3b82f6; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #2563eb; margin-bottom: 0.25rem;">EXPECTED OUTCOME</div>
+                            <div style="font-size: 0.85rem; color: var(--text);">
+                                <strong>25% reduction</strong> in unplanned downtime • <strong>First-time fix rate +18%</strong> • <strong>Works offline</strong> with cached embeddings
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
-            <div class="privacy-item">
-                <span class="privacy-icon">📡</span>
-                <div>
-                    <strong>No External APIs</strong>
-                    <span>100% offline processing</span>
+        </div>
+
+        <!-- Autonomous AI Agents -->
+        <div class="use-cases-grid">
+            <div class="use-case-column" style="grid-column: 1 / -1;">
+                <div class="autonomous-section">
+                    <div class="use-case-content"
+                        style="padding: 2rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); border: 1px solid rgba(0, 0, 0, 0.06);">
+                        <div class="use-case-icon autonomous">🤖</div>
+                        <span class="badge">AUTONOMOUS AI AGENTS</span>
+                        <h2>Document Processing for AI Agents</h2>
+                        <div
+                            style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                            <strong style="color: #10b981; font-size: 0.85rem;">Key Capability:</strong>
+                            <span style="font-size: 0.85rem; color: var(--text);">Autonomous Document
+                                Understanding</span>
+                        </div>
+                        <p class="use-case-description">I implemented the MCP/REST layer so AI agents (e.g., LangChain,
+                            Claude) can treat MegaDoc as a first-class document tool.</p>
+                        <ul class="feature-list">
+                            <li>MCP server integration for AI agents</li>
+                            <li>LangChain-compatible REST API</li>
+                            <li>CI/CD pipeline automation</li>
+                            <li>Agentic workflow document tools</li>
+                        </ul>
+                        <div style="background: #f5f3ff; border: 1px solid #8b5cf6; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #7c3aed; margin-bottom: 0.25rem;">EXPECTED OUTCOME</div>
+                            <div style="font-size: 0.85rem; color: var(--text);">
+                                <strong>10x faster</strong> document processing vs human • <strong>Zero manual intervention</strong> for standard docs • <strong>API-first</strong> for any agent framework
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flow-diagram">
+                        <div class="flow-nodes">
+                            <div class="flow-node input">🤖 AI Agent / LangChain</div>
+                            <div class="flow-arrow">↓</div>
+                            <div class="flow-node process">⚡ MCP / REST API</div>
+                            <div class="flow-arrow">↓</div>
+                            <div class="flow-node">📝 Structured Document Data</div>
+                            <div class="flow-arrow">↓</div>
+                            <div class="flow-node process">🧠 Agent Processing</div>
+                            <div class="flow-arrow">↓</div>
+                            <div class="flow-node output">✅ Autonomous Task Complete</div>
+                        </div>
+                        <p class="flow-label">AI Agent → Document Tool → Structured Data → Action</p>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Use Case 1: RAG Pipeline -->
-        <section class="use-case">
-            <div class="use-case-content">
-                <span class="badge">RETRIEVAL-AUGMENTED GENERATION</span>
-                <h2>Enterprise Chatbot Data Preparation</h2>
-                <p>End-to-end data preparation for AI chatbots and conversational AI. Transform documents into vector embeddings that power intelligent Q&A systems, customer service bots, and knowledge assistants.</p>
-                <ul class="feature-list">
-                    <li>Semantic chunking with tiktoken accuracy</li>
-                    <li>384-dimensional vector embeddings</li>
-                    <li>Export: ChromaDB, LanceDB, JSONL, FAISS</li>
-                    <li>Single API call or step-by-step pipeline</li>
-                    <li>Zero cloud dependency—air-gap compatible</li>
-                </ul>
-            </div>
-            <div class="flow-diagram">
-                <div class="flow-nodes">
-                    <div class="flow-node input">📄 PDF / DOCX / XLSX</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node process">⚡ Convert + Chunk</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node process">🔢 Generate Embeddings</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node" style="display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; min-width: 220px;">
-                        <span style="background: #dbeafe; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">JSONL</span>
-                        <span style="background: #dcfce7; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">ChromaDB</span>
-                        <span style="background: #fef3c7; padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">LanceDB</span>
+        <!-- Additional Use Cases -->
+        <div class="use-cases-grid">
+
+            <!-- Column 1 -->
+            <div class="use-case-column">
+                <section class="use-case" style="margin: 0;">
+                    <div class="use-case-content">
+                        <div class="use-case-icon knowledge">📚</div>
+                        <span class="badge">KNOWLEDGE & INTERNAL SEARCH</span>
+                        <h2>Enterprise Knowledge Hub</h2>
+                        <div
+                            style="background: #eff6ff; border-left: 4px solid var(--primary); padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                            <strong style="color: var(--primary); font-size: 0.85rem;">Key Capability:</strong>
+                            <span style="font-size: 0.85rem; color: var(--text);">Unified Knowledge Graph Search</span>
+                        </div>
+                        <p class="use-case-description">Enterprise knowledge hub for internal docs (Confluence,
+                            SharePoint, Git, runbooks) with RAG-based search and citations.</p>
+                        <ul class="feature-list">
+                            <li>Unified search across wikis, tickets, and code docs.</li>
+                            <li>Architecture and ADR explorer to answer 'why specific design decisions were made'.</li>
+                            <li>Onboarding assistant that explains systems using real internal docs.</li>
+                        </ul>
+                        <div style="background: #eff6ff; border: 1px solid #3b82f6; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #2563eb; margin-bottom: 0.25rem;">EXPECTED OUTCOME</div>
+                            <div style="font-size: 0.85rem; color: var(--text);">
+                                <strong>50% faster</strong> onboarding for new engineers • <strong>80% of questions</strong> answered without Slack • <strong>Single search</strong> across all doc systems
+                            </div>
+                        </div>
                     </div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node output">🗄️ Vector Database Ready</div>
-                </div>
-                <p class="flow-label">Documents → Chunks → Embeddings → Export Format</p>
-            </div>
-        </section>
+                </section>
 
-        <!-- Use Case 2: Knowledge Management -->
-        <section class="use-case reverse">
-            <div class="use-case-content">
-                <span class="badge">INTELLIGENT DOCUMENT SEARCH</span>
-                <h2>Semantic Search & Knowledge Bases</h2>
-                <p>Build AI-powered internal search engines that understand context and meaning. Convert corporate documents into vector-indexed knowledge bases that power semantic search, HR chatbots, and IT help desks.</p>
-                <ul class="feature-list">
-                    <li>Semantic search—find by meaning, not keywords</li>
-                    <li>HR chatbot knowledge bases for policy Q&A</li>
-                    <li>IT help desk document retrieval</li>
-                    <li>Employee onboarding AI assistants</li>
-                </ul>
+                <section class="use-case" style="margin: 0;">
+                    <div class="use-case-content">
+                        <div class="use-case-icon grc">🛡️</div>
+                        <span class="badge">GRC & POLICY INTELLIGENCE</span>
+                        <h2>Policy & Control Mapping Assistant</h2>
+                        <div
+                            style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                            <strong style="color: #10b981; font-size: 0.85rem;">Key Capability:</strong>
+                            <span style="font-size: 0.85rem; color: var(--text);">Policy-to-Control Mapping &
+                                Evidence</span>
+                        </div>
+                        <p class="use-case-description">Policy and control mapping assistant linking regulations (GDPR,
+                            ISO, SOC 2) to internal controls and evidence.</p>
+                        <ul class="feature-list">
+                            <li>Natural language queries over policies and controls with citations.</li>
+                            <li>Mapping of regulatory requirements to existing controls and gaps.</li>
+                            <li>Evidence collection from documents and tickets for audits.</li>
+                        </ul>
+                        <div style="background: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #059669; margin-bottom: 0.25rem;">EXPECTED OUTCOME</div>
+                            <div style="font-size: 0.85rem; color: var(--text);">
+                                <strong>75% faster</strong> audit evidence gathering • <strong>Automatic gap analysis</strong> vs frameworks • <strong>Always audit-ready</strong> documentation
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
-            <div class="flow-diagram">
-                <div class="flow-nodes">
-                    <div class="flow-node input">🗄️ Corporate Documents</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node process">⚡ Convert + Chunk + Embed</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node">🔢 Vector Embeddings</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node process">🗄️ Index in Vector DB</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node output">🤖 AI-Powered Search & Chatbots</div>
-                </div>
-                <p class="flow-label">Documents → Embeddings → Vector DB → Semantic Search</p>
-            </div>
-        </section>
 
-        <!-- Use Case 3: Document Migration -->
-        <section class="use-case">
-            <div class="use-case-content">
-                <span class="badge">LLM TRAINING DATA PIPELINE</span>
-                <h2>AI-Ready Document Migration</h2>
-                <p>Transform legacy document archives into LLM-ready training datasets. Batch convert DOC, XLS, PPT to clean Markdown optimized for fine-tuning, in-context learning, and prompt engineering workflows.</p>
-                <ul class="feature-list">
-                    <li>Bulk processing with async webhooks</li>
-                    <li>Token-efficient output for LLM context windows</li>
-                    <li>Preserves semantic structure for fine-tuning</li>
-                    <li>Audit-ready request ID tracking</li>
-                </ul>
+            <!-- Column 2 -->
+            <div class="use-case-column">
+                <section class="use-case" style="margin: 0;">
+                    <div class="use-case-content">
+                        <div class="use-case-icon support">💬</div>
+                        <span class="badge">CUSTOMER SUPPORT & OPERATIONS</span>
+                        <h2>Multi-Channel Support Assistant</h2>
+                        <div
+                            style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                            <strong style="color: #f59e0b; font-size: 0.85rem;">Key Capability:</strong>
+                            <span style="font-size: 0.85rem; color: var(--text);">Multi-Channel Incident
+                                Intelligence</span>
+                        </div>
+                        <p class="use-case-description">Multi-channel support assistant that ingests tickets, chats, and
+                            FAQs to propose answers and classify issues.</p>
+                        <ul class="feature-list">
+                            <li>Suggested responses for agents with source references.</li>
+                            <li>Automatic ticket categorization and similar-incident lookup.</li>
+                            <li>Escalation signals based on sentiment and intent.</li>
+                        </ul>
+                        <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                            <div style="font-size: 0.75rem; font-weight: 700; color: #d97706; margin-bottom: 0.25rem;">EXPECTED OUTCOME</div>
+                            <div style="font-size: 0.85rem; color: var(--text);">
+                                <strong>35% reduction</strong> in average handle time • <strong>20% deflection</strong> to self-service • <strong>CSAT +12 pts</strong> with cited answers
+                            </div>
+                        </div>
+                    </div>
+                </section>
             </div>
-            <div class="flow-diagram">
-                <div class="flow-nodes">
-                    <div class="flow-node input">📁 Legacy Archive (ZIP)</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node process">⚡ API: /api/batch/convert</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node">🔔 Webhook Callback</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node output">📦 Converted ZIP (Markdown)</div>
-                </div>
-                <p class="flow-label">Legacy Docs → Async Pipeline → LLM-Ready Markdown</p>
-            </div>
-        </section>
 
-        <!-- Use Case 4: Compliance -->
-        <section class="use-case reverse">
-            <div class="use-case-content">
-                <span class="badge">HIPAA • SOC 2 • GDPR READY</span>
-                <h2>Privacy-First AI for Regulated Industries</h2>
-                <p>Build AI chatbots and document intelligence systems for healthcare, finance, and legal without cloud data exposure. True Zero Data Retention architecture meets the strictest compliance requirements.</p>
-                <ul class="feature-list">
-                    <li>Ephemeral processing—zero persistence layer</li>
-                    <li>Air-gap deployment for classified environments</li>
-                    <li>Audit trail without document content logging</li>
-                    <li>No BAA required—data never leaves your infra</li>
-                </ul>
-            </div>
-            <div class="flow-diagram">
-                <div class="flow-nodes">
-                    <div class="flow-node input">📄 Sensitive Document</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node process">🔒 Local Processing</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node">📝 Extracted Content</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node process">🗑️ Immediate Deletion</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node output">✅ Audit Log Only</div>
-                </div>
-                <p class="flow-label">Process → Extract → Delete → No Trace</p>
-            </div>
-        </section>
-
-        <!-- Use Case 5: Content Publishing -->
-        <section class="use-case">
-            <div class="use-case-content">
-                <span class="badge">AUTONOMOUS AI AGENTS</span>
-                <h2>Document Processing for AI Agents</h2>
-                <p>Enable autonomous AI agents to process and understand documents. Integrate with MCP servers, LangChain, and agent frameworks to give AI systems document intelligence capabilities.</p>
-                <ul class="feature-list">
-                    <li>MCP server integration for Claude agents</li>
-                    <li>LangChain-compatible REST API</li>
-                    <li>CI/CD pipeline automation</li>
-                    <li>Agentic workflow document tools</li>
-                </ul>
-            </div>
-            <div class="flow-diagram">
-                <div class="flow-nodes">
-                    <div class="flow-node input">🤖 AI Agent / LangChain</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node process">⚡ MCP / REST API</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node">📝 Structured Document Data</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node process">🧠 Agent Processing</div>
-                    <div class="flow-arrow">↓</div>
-                    <div class="flow-node output">✅ Autonomous Task Complete</div>
-                </div>
-                <p class="flow-label">AI Agent → Document Tool → Structured Data → Action</p>
-            </div>
-        </section>
-
-        <!-- CTA -->
-        <section class="cta-section">
-            <h2>Production-Ready Document Intelligence</h2>
-            <p style="color: var(--text-light);">Enterprise architecture. Zero data retention. Full API access for integration testing.</p>
-            <div class="cta-buttons">
-                <a href="/convert" class="btn btn-primary">Try Live Demo</a>
-                <a href="/architecture" class="btn btn-secondary">View Architecture</a>
-                <a href="/api/docs" class="btn btn-secondary">API Documentation</a>
-            </div>
-        </section>
-
-        <footer>
-            <p>&copy; 2025 paulocadias.com - All processing happens locally. Zero data retention.</p>
-        </footer>
+        </div>
     </div>
+
+    <!-- Footer -->
+    {% include 'includes/footer.html' %}
 </body>
+
 </html>

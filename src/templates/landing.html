@@ -4,83 +4,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MegaDoc - Enterprise Document Intelligence Platform | Paulo Cadias</title>
+    <title>MegaDoc - Multi-Modal AI Platform</title>
     <meta name="description"
-        content="Production-ready document intelligence platform with RAG pipeline, vector embeddings, and zero data retention architecture. Built by Paulo Cadias.">
+        content="Multi-modal AI platform with RAG pipeline, vector embeddings, and ephemeral session storage architecture.">
     <meta name="keywords"
-        content="document intelligence, RAG pipeline, vector embeddings, AI architecture, document processing, enterprise AI, Paulo Cadias">
-    <meta name="author" content="Paulo Cadias">
+        content="document intelligence, RAG pipeline, vector embeddings, AI architecture, document processing, multi-modal AI">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://megadocs.paulocadias.com/">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://megadocs.paulocadias.com/">
-    <meta property="og:title" content="MegaDoc - Enterprise Document Intelligence Platform">
-    <meta property="og:description"
-        content="Production-ready document intelligence with RAG pipeline and zero data retention.">
+    <meta property="og:title" content="MegaDoc - Multi-Modal AI Platform">
+    <meta property="og:description" content="Multi-modal AI platform with RAG pipeline and ephemeral session storage.">
     <meta name="theme-color" content="#2563eb">
-    <link rel="icon" type="image/svg+xml"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='15' fill='%232563eb'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>MD</text></svg>">
-    <link rel="stylesheet" href="/static/style.css">
+    {% include 'includes/head_common.html' %}
     <style>
-        /* Landing Page Specific Styles */
-        .landing-hero {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-            color: white;
-            padding: 6rem 2rem;
-            margin: -2rem -2rem 0;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
+        :root {
+            --accent: #f59e0b;
+            --background: #ffffff;
+            --surface: #f8fafc;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-light: #64748b;
         }
 
-        .landing-hero::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background:
-                radial-gradient(circle at 20% 50%, rgba(37, 99, 235, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 80% 50%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
-            pointer-events: none;
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+            color: var(--text);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        p {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: var(--text-light);
+            line-height: 1.7;
+        }
+
+        /* Landing Page Specific Styles */
+        .landing-hero {
+            background: radial-gradient(circle at center, #f0f9ff 0%, #ffffff 70%);
+            color: var(--text);
+            padding: 4rem 1rem;
+            margin: 0 -2rem 0;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
         }
 
         .landing-hero-content {
-            position: relative;
-            max-width: 900px;
+            max-width: 800px;
             margin: 0 auto;
         }
 
         .hero-badge {
             display: inline-block;
-            background: rgba(37, 99, 235, 0.2);
-            border: 1px solid rgba(37, 99, 235, 0.4);
-            color: #60a5fa;
-            padding: 0.5rem 1.25rem;
-            border-radius: 30px;
-            font-size: 0.85rem;
-            font-weight: 600;
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            color: var(--primary);
+            padding: 0.4rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
             letter-spacing: 0.05em;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
 
         .landing-hero h1 {
             font-size: 3.5rem;
             font-weight: 800;
-            line-height: 1.1;
+            line-height: 1.2;
             margin-bottom: 1.5rem;
-            background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
 
         .landing-hero p {
             font-size: 1.25rem;
-            color: #94a3b8;
-            max-width: 700px;
-            margin: 0 auto 2.5rem;
+            color: var(--text-light);
+            max-width: 100%;
+            margin: 0 auto 2rem;
             line-height: 1.6;
         }
 
@@ -89,10 +96,11 @@
             gap: 1rem;
             justify-content: center;
             flex-wrap: wrap;
+            margin-top: 2rem;
         }
 
         .hero-btn {
-            padding: 1rem 2rem;
+            padding: 0.875rem 1.75rem;
             border-radius: 8px;
             font-weight: 600;
             text-decoration: none;
@@ -100,77 +108,264 @@
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
+            font-size: 0.95rem;
         }
 
         .hero-btn-primary {
-            background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+            background: var(--primary);
             color: white;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);
         }
 
         .hero-btn-primary:hover {
+            background: #1d4ed8;
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(37, 99, 235, 0.3);
+            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
         }
 
         .hero-btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: white;
+            color: var(--text);
+            border: 1px solid var(--border);
         }
 
         .hero-btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.15);
+            background: var(--surface);
+            border-color: var(--text-light);
+            transform: translateY(-2px);
         }
 
-        /* Tech Stack Bar */
-        .tech-bar {
+        /* Deployment Badges */
+        .deployment-badges {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 1.5rem 0;
+        }
+
+        .deploy-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: white;
+            border: 1px solid var(--border);
+            color: var(--text-light);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .deploy-badge:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: translateY(-1px);
+        }
+
+        /* Landing Sections */
+        .landing-section {
+            padding: 5rem 0;
+            background: var(--background);
+        }
+
+        .how-it-works {
+            padding: 5rem 0;
             background: var(--surface);
-            padding: 1.5rem 0;
+            border-top: 1px solid var(--border);
             border-bottom: 1px solid var(--border);
         }
 
-        .tech-bar-content {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 3rem;
-            flex-wrap: wrap;
-            opacity: 0.7;
-            font-size: 0.9rem;
-            font-weight: 500;
-            color: var(--text-light);
+        /* Tools Grid */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 3rem;
         }
 
-        .tech-item {
+        .tool-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            position: relative;
+            text-align: center;
             display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary);
+        }
+
+        .tool-card-featured {
+            border-color: var(--primary);
+            background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
+        }
+
+        .featured-badge {
+            position: absolute;
+            top: -10px;
+            right: 15px;
+            background: var(--primary);
+            color: white;
+            padding: 0.3rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+        }
+
+        .tool-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .tool-card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+
+        .tool-card p {
+            color: var(--text-light);
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            font-size: 0.95rem;
+            flex: 1;
+        }
+
+        .tool-cta {
+            display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
+            justify-content: center;
+            gap: 0.4rem;
+            background: var(--surface);
+            color: var(--text);
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+            border: 1px solid var(--border);
+            margin-top: auto;
+        }
+
+        .tool-cta:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Steps Grid */
+        .steps-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr auto 1fr;
+            gap: 2rem;
+            margin-top: 4rem;
+            align-items: center;
+        }
+
+        @media (max-width: 968px) {
+            .steps-grid {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+            }
+
+            .step-arrow {
+                display: none;
+            }
+        }
+
+        .step-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .step-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary);
+        }
+
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            background: var(--surface);
+            color: var(--text-light);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+        }
+
+        .step-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .step-card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: var(--text);
+        }
+
+        .step-card p {
+            color: var(--text-light);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .step-arrow {
+            font-size: 1.5rem;
+            color: var(--border);
+            font-weight: 300;
         }
 
         /* Feature Sections */
-        .feature-section {
-            padding: 5rem 0;
-        }
-
         .section-header {
             text-align: center;
-            margin-bottom: 3rem;
+            margin-bottom: 4rem;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
-        .section-badge {
-            display: inline-block;
-            background: #dbeafe;
-            color: var(--primary);
-            padding: 0.35rem 1rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
+        .eyebrow-label {
+            display: block;
+            text-align: center;
+            font-size: 0.8rem;
             font-weight: 700;
-            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-light);
             margin-bottom: 1rem;
         }
 
         .section-header h2 {
-            font-size: 2.25rem;
+            font-size: 2.5rem;
             font-weight: 700;
             margin-bottom: 1rem;
         }
@@ -178,214 +373,15 @@
         .section-header p {
             font-size: 1.1rem;
             color: var(--text-light);
-            max-width: 600px;
+            max-width: 100%;
             margin: 0 auto;
-        }
-
-        /* Architecture Cards */
-        .arch-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 1.5rem;
-            margin-top: 3rem;
-        }
-
-        .arch-card {
-            background: var(--surface);
-            border-radius: 16px;
-            padding: 2rem;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-            transition: all 0.3s;
-        }
-
-        .arch-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-        }
-
-        .arch-card-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            margin-bottom: 1.25rem;
-        }
-
-        .arch-card h3 {
-            font-size: 1.25rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .arch-card p {
-            color: var(--text-light);
-            font-size: 0.95rem;
-            line-height: 1.6;
-        }
-
-        .arch-card ul {
-            margin-top: 1rem;
-            padding-left: 1.25rem;
-            color: var(--text-light);
-            font-size: 0.9rem;
-        }
-
-        .arch-card ul li {
-            margin-bottom: 0.5rem;
-        }
-
-        /* API Preview */
-        .api-preview {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: white;
-            padding: 5rem 0;
-            margin: 0 -2rem;
-        }
-
-        .api-preview .section-header h2 {
-            color: white;
-        }
-
-        .api-preview .section-header p {
-            color: #94a3b8;
-        }
-
-        .api-endpoints {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1rem;
-            max-width: 900px;
-            margin: 2rem auto 0;
-        }
-
-        .api-endpoint {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .api-method {
-            padding: 0.25rem 0.75rem;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            font-family: monospace;
-        }
-
-        .api-method.post {
-            background: #3b82f6;
-        }
-
-        .api-method.get {
-            background: #10b981;
-        }
-
-        .api-path {
-            font-family: monospace;
-            font-size: 0.9rem;
-        }
-
-        .api-desc {
-            color: #94a3b8;
-            font-size: 0.8rem;
-            margin-left: auto;
-        }
-
-        /* Stats Section */
-        .stats-section {
-            background: var(--surface);
-            padding: 4rem 0;
-            border-top: 1px solid var(--border);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 2rem;
-            max-width: 800px;
-            margin: 0 auto;
-            text-align: center;
-        }
-
-        .stat-item .value {
-            font-size: 2.5rem;
-            font-weight: 800;
-            color: var(--primary);
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-item .label {
-            font-size: 0.9rem;
-            color: var(--text-light);
-        }
-
-        /* CTA Section */
-        .cta-section {
-            text-align: center;
-            padding: 5rem 0;
-        }
-
-        .cta-section h2 {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-        }
-
-        .cta-section p {
-            color: var(--text-light);
-            margin-bottom: 2rem;
-            max-width: 500px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .cta-buttons {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .cta-btn {
-            padding: 1rem 2rem;
-            border-radius: 8px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.2s;
-        }
-
-        .cta-btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .cta-btn-primary:hover {
-            background: var(--primary-dark);
-        }
-
-        .cta-btn-secondary {
-            background: var(--surface);
-            color: var(--text);
-            border: 1px solid var(--border);
-        }
-
-        .cta-btn-secondary:hover {
-            background: var(--bg);
         }
 
         /* Footer */
         .landing-footer {
             background: #0f172a;
             color: white;
-            padding: 3rem 0;
+            padding: 4rem 0;
             text-align: center;
             margin: 0 -2rem -2rem;
         }
@@ -402,19 +398,11 @@
 
         @media (max-width: 768px) {
             .landing-hero h1 {
-                font-size: 2.25rem;
+                font-size: 2.5rem;
             }
 
             .landing-hero p {
-                font-size: 1rem;
-            }
-
-            .tech-bar-content {
-                gap: 1.5rem;
-            }
-
-            .section-header h2 {
-                font-size: 1.75rem;
+                font-size: 1.1rem;
             }
         }
     </style>
@@ -422,348 +410,438 @@
 
 <body>
     <!-- Global Header -->
-    <div class="site-header-wrapper">
-        <header class="site-header">
-            <a href="/" class="logo-link">
-                <div class="logo-icon">MD</div>
-                <span class="logo-text">MegaDoc</span>
-            </a>
-            <nav>
-                <a href="/convert">Convert</a>
-                <a href="/rag">RAG Pipeline</a>
-                <a href="/compare">Compare</a>
-                <a href="/architecture">Architecture</a>
-                <a href="/use-cases">Use Cases</a>
-                <a href="/api/docs">API</a>
-                <a href="/contact">Contact</a>
-            </nav>
-        </header>
-    </div>
+    {% include 'includes/header.html' %}
 
-    <div class="app-container" style="max-width: 1200px;">
+    <div class="app-container">
         <!-- Hero Section -->
         <section class="landing-hero">
             <div class="landing-hero-content">
+                <div class="hero-badge">REFERENCE IMPLEMENTATION • PRODUCTION-GRADE</div>
+                <h1>MegaDoc</h1>
+                <p>A multi-modal document intelligence platform I built to demonstrate production AI patterns: RAG pipelines,
+                    vector embeddings, and privacy-first architecture.</p>
+                <p style="font-size: 0.95rem; color: var(--primary); font-weight: 600; margin-top: 0.5rem;">
+                    Domain-Agnostic: Switch contexts (Legal/Medical/Finance/Industrial) instantly via dynamic system prompting.
+                </p>
 
-                <h1>Enterprise Document Intelligence Platform</h1>
-                <p>Production-ready document processing with RAG pipelines, vector embeddings, and zero data retention
-                    architecture. Built to demonstrate enterprise AI engineering capabilities.</p>
+                <!-- Deployment Badges -->
+                <div class="deployment-badges">
+                    <span class="deploy-badge">SOC 2 Ready</span>
+                    <span class="deploy-badge">Multi-Modal Native</span>
+                    <span class="deploy-badge">OpenRouter Gateway</span>
+                    <span class="deploy-badge">Cloud Agnostic</span>
+                </div>
+
                 <div class="hero-ctas">
-                    <a href="/convert" class="hero-btn hero-btn-primary">
-                        <span>Try Live Demo</span>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <path d="M5 12h14M12 5l7 7-7 7" />
-                        </svg>
-                    </a>
-                    <a href="/architecture" class="hero-btn hero-btn-secondary">
-                        <span>View Architecture</span>
-                    </a>
-                    <a href="/api/docs" class="hero-btn hero-btn-secondary">
-                        <span>API Documentation</span>
-                    </a>
+                    <a href="/convert" class="hero-btn hero-btn-primary">Start Ingesting →</a>
+                    <button id="industrialDemoBtn" class="hero-btn hero-btn-secondary"
+                        style="padding: 0.5rem 1rem; font-size: 0.875rem;">🏭 Load Industrial Demo</button>
+                    <a href="/architecture" class="hero-btn hero-btn-secondary">View Architecture</a>
                 </div>
             </div>
         </section>
 
-        <!-- Tech Stack Bar -->
-        <div class="tech-bar">
-            <div class="tech-bar-content">
-                <span class="tech-item">Python/Flask</span>
-                <span class="tech-item">sentence-transformers</span>
-                <span class="tech-item">tiktoken</span>
-                <span class="tech-item">ChromaDB</span>
-                <span class="tech-item">LanceDB</span>
-                <span class="tech-item">REST API</span>
-                <span class="tech-item">MCP Integration</span>
-            </div>
-        </div>
-
-        <!-- Architecture Overview -->
-        <section class="feature-section">
-            <div class="section-header">
-                <span class="section-badge">SYSTEM ARCHITECTURE</span>
-                <h2>Built for Enterprise AI Workloads</h2>
-                <p>Demonstrating production-grade patterns for document intelligence, RAG pipelines, and privacy-first
-                    processing</p>
-            </div>
-
-            <div class="arch-grid">
-                <div class="arch-card">
-                    <div class="arch-card-icon">🏗️</div>
-                    <h3>Zero Data Retention (ZDR)</h3>
-                    <p>Ephemeral memory architecture with stateless processing. Each API call is atomic with no
-                        persistence layer.</p>
-                    <ul>
-                        <li>In-memory processing only</li>
-                        <li>No file system writes</li>
-                        <li>Immediate data cleanup</li>
-                        <li>Air-gap deployment ready</li>
-                    </ul>
+        <!-- Key Metrics Bar -->
+        <section style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 12px; padding: 1.5rem 2rem; margin: -2rem 0 2rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1.5rem; text-align: center;">
+                <div>
+                    <div style="font-size: 1.75rem; font-weight: 800; color: #10b981;">50+</div>
+                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7);">Document Formats</div>
                 </div>
-
-                <div class="arch-card">
-                    <div class="arch-card-icon">🧠</div>
-                    <h3>RAG Pipeline Integration</h3>
-                    <p>Complete document-to-embedding pipeline with semantic chunking and vector database exports.</p>
-                    <ul>
-                        <li>tiktoken-accurate chunking</li>
-                        <li>384-dim embeddings (all-MiniLM-L6-v2)</li>
-                        <li>ChromaDB/LanceDB/JSONL export</li>
-                        <li>Single-call pipeline API</li>
-                    </ul>
+                <div>
+                    <div style="font-size: 1.75rem; font-weight: 800; color: #3b82f6;">~320ms</div>
+                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7);">P95 RAG Latency</div>
                 </div>
-
-                <div class="arch-card">
-                    <div class="arch-card-icon">🔒</div>
-                    <h3>Security by Design</h3>
-                    <p>Multi-layer security controls following enterprise security best practices.</p>
-                    <ul>
-                        <li>Magic byte file validation</li>
-                        <li>CSRF protection</li>
-                        <li>Rate limiting per IP</li>
-                        <li>Security headers (CSP, XSS)</li>
-                    </ul>
+                <div>
+                    <div style="font-size: 1.75rem; font-weight: 800; color: #f59e0b;">85%</div>
+                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7);">Cost Reduction</div>
                 </div>
-
-                <div class="arch-card">
-                    <div class="arch-card-icon">🤖</div>
-                    <h3>AI Agent Integration</h3>
-                    <p>Built for autonomous AI workflows with MCP server support and LangChain compatibility.</p>
-                    <ul>
-                        <li>MCP server for Claude agents</li>
-                        <li>RESTful API design</li>
-                        <li>Async webhook callbacks</li>
-                        <li>Batch processing support</li>
-                    </ul>
+                <div>
+                    <div style="font-size: 1.75rem; font-weight: 800; color: #8b5cf6;">0.87</div>
+                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7);">RAGAS Score</div>
+                </div>
+                <div>
+                    <div style="font-size: 1.75rem; font-weight: 800; color: #14b8a6;">0</div>
+                    <div style="font-size: 0.75rem; color: rgba(255,255,255,0.7);">High-Severity CVEs</div>
                 </div>
             </div>
         </section>
-
-        <!-- Security Section -->
-        <section class="feature-section"
-            style="background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); color: white; padding: 5rem 2rem; margin: 0 -2rem;">
-            <div class="section-header">
-                <span class="section-badge" style="background: rgba(255, 255, 255, 0.2); color: white;">SECURITY
-                    EXPERTISE</span>
-                <h2 style="color: white;">Production-Grade Security Controls</h2>
-                <p style="color: rgba(255, 255, 255, 0.8);">Enterprise security architecture protecting against OWASP
-                    Top 10 vulnerabilities and abuse vectors</p>
-            </div>
-
-            <div class="arch-grid" style="max-width: 1000px; margin: 3rem auto 0;">
-                <div
-                    style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 1.5rem;">
-                    <h3
-                        style="font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 1.25rem;">🛡️</span> Brute Force Protection
-                    </h3>
-                    <p style="font-size: 0.9rem; opacity: 0.9; line-height: 1.6;">IP-based rate limiting with sliding
-                        window algorithm. Progressive blocking for repeated violations. Automatic IP blacklisting for
-                        abuse patterns.</p>
-                </div>
-
-                <div
-                    style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 1.5rem;">
-                    <h3
-                        style="font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 1.25rem;">🔐</span> CSRF Protection
-                    </h3>
-                    <p style="font-size: 0.9rem; opacity: 0.9; line-height: 1.6;">Cryptographically secure tokens on all
-                        state-changing operations. Double-submit cookie pattern with SameSite attribute enforcement.</p>
-                </div>
-
-                <div
-                    style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 1.5rem;">
-                    <h3
-                        style="font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 1.25rem;">📁</span> File Validation
-                    </h3>
-                    <p style="font-size: 0.9rem; opacity: 0.9; line-height: 1.6;">Magic byte validation prevents file
-                        type spoofing. Content-Type verification, extension whitelisting, and size limits protect
-                        against malicious uploads.</p>
-                </div>
-
-                <div
-                    style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 1.5rem;">
-                    <h3
-                        style="font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 1.25rem;">🤖</span> Bot Detection
-                    </h3>
-                    <p style="font-size: 0.9rem; opacity: 0.9; line-height: 1.6;">Honeypot fields trap automated form
-                        submissions. Request timing analysis detects scripted attacks. Pattern matching identifies
-                        malicious user agents.</p>
-                </div>
-
-                <div
-                    style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 1.5rem;">
-                    <h3
-                        style="font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 1.25rem;">🔒</span> Security Headers
-                    </h3>
-                    <p style="font-size: 0.9rem; opacity: 0.9; line-height: 1.6;">Content-Security-Policy,
-                        X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security, and Referrer-Policy headers
-                        on all responses.</p>
-                </div>
-
-                <div
-                    style="background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 1.5rem;">
-                    <h3
-                        style="font-size: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
-                        <span style="font-size: 1.25rem;">☁️</span> Cloudflare Integration
-                    </h3>
-                    <p style="font-size: 0.9rem; opacity: 0.9; line-height: 1.6;">DDoS protection, Web Application
-                        Firewall (WAF), SSL/TLS termination, and edge caching. Trusted proxy headers for accurate IP
-                        tracking.</p>
-                </div>
-            </div>
-
-            <div style="text-align: center; margin-top: 2.5rem;">
-                <a href="/architecture" class="hero-btn hero-btn-secondary"
-                    style="border-color: rgba(255,255,255,0.4);">View Full Security Architecture</a>
-            </div>
-        </section>
-
-        <!-- API Preview Section -->
-        <section class="api-preview">
-            <div class="section-header">
-                <span class="section-badge" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa;">FULL REST
-                    API</span>
-                <h2>Production-Ready Endpoints</h2>
-                <p>Complete API with document processing, RAG pipeline, and utility endpoints</p>
-            </div>
-
-            <div class="api-endpoints">
-                <div class="api-endpoint">
-                    <span class="api-method post">POST</span>
-                    <span class="api-path">/api/convert</span>
-                    <span class="api-desc">Document conversion</span>
-                </div>
-                <div class="api-endpoint">
-                    <span class="api-method post">POST</span>
-                    <span class="api-path">/api/pipeline</span>
-                    <span class="api-desc">Full RAG pipeline</span>
-                </div>
-                <div class="api-endpoint">
-                    <span class="api-method post">POST</span>
-                    <span class="api-path">/api/chunk</span>
-                    <span class="api-desc">Semantic chunking</span>
-                </div>
-                <div class="api-endpoint">
-                    <span class="api-method post">POST</span>
-                    <span class="api-path">/api/embed</span>
-                    <span class="api-desc">Vector embeddings</span>
-                </div>
-                <div class="api-endpoint">
-                    <span class="api-method post">POST</span>
-                    <span class="api-path">/api/export/vectordb</span>
-                    <span class="api-desc">ChromaDB/LanceDB</span>
-                </div>
-                <div class="api-endpoint">
-                    <span class="api-method get">GET</span>
-                    <span class="api-path">/api/stats</span>
-                    <span class="api-desc">Live statistics</span>
-                </div>
-            </div>
-
-            <div style="text-align: center; margin-top: 2rem;">
-                <a href="/api/docs" class="hero-btn hero-btn-primary">View Full API Documentation</a>
-            </div>
-        </section>
-
-        <!-- Live Stats Section -->
-        <section class="stats-section">
-            <div class="stats-grid">
-                <div class="stat-item">
-                    <div class="value" id="statConversions">--</div>
-                    <div class="label">Documents Processed</div>
-                </div>
-                <div class="stat-item">
-                    <div class="value" id="statChunks">--</div>
-                    <div class="label">RAG Chunks Created</div>
-                </div>
-                <div class="stat-item">
-                    <div class="value">15+</div>
-                    <div class="label">File Formats</div>
-                </div>
-                <div class="stat-item">
-                    <div class="value">0s</div>
-                    <div class="label">Data Retention</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Use Cases Preview -->
-        <section class="feature-section">
-            <div class="section-header">
-                <span class="section-badge">ENTERPRISE USE CASES</span>
-                <h2>Data Preparation for AI Applications</h2>
-                <p>Designed for enterprise chatbots, semantic search, and document intelligence systems</p>
-            </div>
-
-            <div class="arch-grid">
-                <div class="arch-card">
-                    <div class="arch-card-icon">💬</div>
-                    <h3>AI Chatbot Knowledge Bases</h3>
-                    <p>Transform corporate documents into vector-indexed knowledge bases for conversational AI, Q&A
-                        bots, and customer support systems.</p>
-                </div>
-
-                <div class="arch-card">
-                    <div class="arch-card-icon">🔍</div>
-                    <h3>Semantic Search Engines</h3>
-                    <p>Build intelligent document search that understands meaning, not just keywords. Power internal
-                        search with vector embeddings.</p>
-                </div>
-
-                <div class="arch-card">
-                    <div class="arch-card-icon">🏥</div>
-                    <h3>Regulated Industries</h3>
-                    <p>HIPAA, SOC 2, GDPR compliant processing. Deploy AI capabilities in healthcare, finance, and legal
-                        without data exposure.</p>
-                </div>
-            </div>
-
-            <div style="text-align: center; margin-top: 2rem;">
-                <a href="/use-cases" class="cta-btn cta-btn-secondary">View All Use Cases</a>
-            </div>
-        </section>
-
-        <!-- Final CTA -->
-        <section class="cta-section">
-            <h2>Ready to Explore the Architecture?</h2>
-            <p>Try the live demo, explore the API, or dive into the technical architecture documentation.</p>
-            <div class="cta-buttons">
-                <a href="/convert" class="cta-btn cta-btn-primary">Try Live Demo</a>
-                <a href="/architecture" class="cta-btn cta-btn-secondary">View Architecture</a>
-                <a href="/api/docs" class="cta-btn cta-btn-secondary">API Documentation</a>
-            </div>
-        </section>
-
-        <!-- Footer -->
-        <footer class="landing-footer">
-            <p>&copy; 2025 <a href="https://paulocadias.com">paulocadias.com</a> - Enterprise Document Intelligence
-                Platform</p>
-            <p style="margin-top: 0.5rem;">Zero Data Retention | Privacy by Design | Production-Ready Architecture</p>
-        </footer>
     </div>
 
-    <script>
-        async function loadStats() {
-            try {
-                const response = await fetch('/api/stats');
-                const data = await response.json();
-                const stats = data.statistics || {};
-                document.getElementById('statConversions').textContent =
-                    (stats.conversions?.total || 0).toLocaleString();
-                document.getElementById('statChunks').textContent =
-                    (stats.ai_features?.total_chunks_generated || 0).toLocaleString();
-            } catch (e) {
-                document.getElementById('statConversions').textContent = '1,000+';
-                document.getElementById('statChunks').textContent = '10,000+';
+    <!-- What is this? -->
+    <section class="landing-section" style="background: #f8fafc; padding: 1rem 0;">
+        <div class="app-container">
+            <div style="max-width: 100%; margin: 0 auto; text-align: center;">
+                <h2 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--text);">What is
+                    MegaDoc?</h2>
+                <p style="font-size: 1rem; line-height: 1.6; color: var(--text-light); margin-bottom: 1rem;">
+                    A reference platform I designed and built to solve real enterprise problems: transforming static PDFs,
+                    technical manuals, and field photos into a live, queryable knowledge base—without training custom models.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Platform Tools Section -->
+    <section class="landing-section">
+        <div class="app-container">
+            <div class="section-header">
+                <div class="section-badge">CHOOSE YOUR TOOL</div>
+                <h2>What do you want to do?</h2>
+            </div>
+
+            <div class="tools-grid">
+                <div class="tool-card">
+                    <div class="tool-icon">📄</div>
+                    <h3>Universal Ingestion</h3>
+                    <p>Ingest Docs & Images</p>
+                    <a href="/convert" class="tool-cta">Access Converter →</a>
+                </div>
+
+                <div class="tool-card tool-card-featured">
+                    <div class="featured-badge">POPULAR</div>
+                    <div class="tool-icon">🤖</div>
+                    <h3>Cognitive RAG</h3>
+                    <p>Chat with multi-modal context</p>
+                    <a href="/rag" class="tool-cta">Access RAG Pipeline →</a>
+                </div>
+
+                <div class="tool-card">
+                    <div class="tool-icon">📊</div>
+                    <h3>Platform Observability</h3>
+                    <p>Real-time DORA metrics</p>
+                    <a href="/stats" class="tool-cta">View Dashboard →</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3-Step Pipeline Walkthrough -->
+    <section class="how-it-works">
+        <div class="app-container">
+            <div class="section-header">
+                <div class="section-badge">HOW IT WORKS</div>
+                <h2>Unified 3-Stage Intelligence Pipeline</h2>
+                <p>Ingest any data (text or images) and chat with unified multi-modal intelligence.</p>
+            </div>
+
+            <div class="steps-grid">
+                <a href="/convert" class="step-card" style="text-decoration: none; color: inherit;">
+                    <div class="step-number">1</div>
+                    <div class="step-icon">📥</div>
+                    <h3>Ingest</h3>
+                    <p>Upload one or more documents (PDF, Word, Excel) or images (JPG, PNG). Upload multiple files to
+                        compare them. All sources are converted to searchable text for RAG indexing.</p>
+                </a>
+
+                <div class="step-arrow">→</div>
+
+                <a href="/rag" class="step-card" style="text-decoration: none; color: inherit;">
+                    <div class="step-number">2</div>
+                    <div class="step-icon">🤖</div>
+                    <h3>Multi-Modal RAG Chat</h3>
+                    <p>Chat with your data using AI models. Works seamlessly with both text documents and images -
+                        images are analyzed and indexed as searchable descriptions.</p>
+                </a>
+
+                <div class="step-arrow">→</div>
+
+                <a href="/rag?mode=audit" class="step-card" style="text-decoration: none; color: inherit;">
+                    <div class="step-number">3</div>
+                    <div class="step-icon">⚖️</div>
+                    <h3>Visual QA & Audit</h3>
+                    <p>Automated cross-modal verification. Compare observed reality (Photos) against documentation
+                        (Manuals) for compliance.</p>
+                </a>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- Trust & Security Footer Band -->
+    <section
+        style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 4rem 0; margin-top: 4rem;">
+        <div class="app-container">
+            <div style="text-align: center; max-width: 800px; margin: 0 auto;">
+                <div
+                    style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <span style="font-size: 2rem;">🔒</span>
+                    <h2 style="font-size: 1.75rem; font-weight: 700; color: white; margin: 0;">Enterprise-Grade Security
+                    </h2>
+                </div>
+                <p style="font-size: 1.1rem; color: rgba(255, 255, 255, 0.9); margin-bottom: 2rem; line-height: 1.6;">
+                    Built for regulated industries. We prioritize data privacy, zero-retention architecture, and
+                    complete auditability.
+                </p>
+
+                <div style="display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap; margin-bottom: 2.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: rgba(255, 255, 255, 0.8);">
+                        <span style="color: #4ade80;">✓</span> Zero Data Retention
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: rgba(255, 255, 255, 0.8);">
+                        <span style="color: #4ade80;">✓</span> RBAC Ready
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; color: rgba(255, 255, 255, 0.8);">
+                        <span style="color: #4ade80;">✓</span> Full Audit Logs
+                    </div>
+                </div>
+
+                <a href="/architecture#security"
+                    style="display: inline-block; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2); color: white; padding: 0.75rem 1.5rem; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.2s;">
+                    View Security Architecture →
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    {% include 'includes/footer.html' %}
+
+    <!-- System Status Footer -->
+    <div class="system-status-footer">
+        <div class="status-container">
+            <span class="status-item">
+                <span class="status-indicator operational"></span>
+                System Status: <strong>Operational</strong>
+            </span>
+            <span class="status-divider">|</span>
+            <span class="status-item">
+                Version: <strong>v2.4.0-Enterprise</strong>
+            </span>
+            <span class="status-divider">|</span>
+            <span class="status-item">
+                Cluster: <strong>cr-managed-autoscale</strong>
+            </span>
+        </div>
+    </div>
+
+    <style>
+        .system-status-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            color: #94a3b8;
+            padding: 0.5rem 0;
+            font-size: 0.75rem;
+            border-top: 1px solid #334155;
+            z-index: 1000;
+        }
+
+        .status-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-item strong {
+            color: white;
+        }
+
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .status-indicator.operational {
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse-status 2s infinite;
+        }
+
+        @keyframes pulse-status {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
             }
         }
-        loadStats();
+
+        .status-divider {
+            color: #475569;
+        }
+
+        @media (max-width: 768px) {
+            .system-status-footer {
+                font-size: 0.7rem;
+            }
+
+            .status-container {
+                padding: 0 1rem;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+
+    <script>
+        // Sample Legal Contract for Quick Start
+        const SAMPLE_CONTRACT = `# SOFTWARE LICENSE AGREEMENT
+
+## PARTIES
+
+This Software License Agreement ("Agreement") is entered into on [DATE] between:
+
+**Licensor:** [COMPANY NAME], a corporation organized under the laws of [STATE], with its principal place of business at [ADDRESS] ("Licensor").
+
+**Licensee:** [CLIENT NAME], a corporation organized under the laws of [STATE], with its principal place of business at [ADDRESS] ("Licensee").
+
+## 1. GRANT OF LICENSE
+
+Subject to the terms and conditions of this Agreement, Licensor hereby grants to Licensee a non-exclusive, non-transferable license to use the Software (as defined below) solely for Licensee's internal business operations.
+
+## 2. DEFINITIONS
+
+**Software** means the proprietary software application known as "[SOFTWARE NAME]" and all related documentation, updates, and modifications provided by Licensor.
+
+## 3. RESTRICTIONS
+
+Licensee shall not:
+- Copy, modify, or create derivative works of the Software
+- Reverse engineer, decompile, or disassemble the Software
+- Rent, lease, or sublicense the Software to third parties
+- Remove or alter any proprietary notices or labels on the Software
+
+## 4. TERM AND TERMINATION
+
+This Agreement shall commence on the Effective Date and continue for a period of [TERM] years, unless earlier terminated in accordance with this Agreement.
+
+Either party may terminate this Agreement upon [NOTICE PERIOD] days' written notice to the other party.
+
+## 5. PAYMENT
+
+Licensee agrees to pay Licensor a license fee of $[AMOUNT] payable within [PAYMENT TERMS] days of the Effective Date.
+
+## 6. WARRANTY DISCLAIMER
+
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+
+## 7. LIMITATION OF LIABILITY
+
+IN NO EVENT SHALL LICENSOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING OUT OF OR RELATING TO THIS AGREEMENT.
+
+## 8. GOVERNING LAW
+
+This Agreement shall be governed by and construed in accordance with the laws of [STATE], without regard to its conflict of law provisions.
+
+## 9. ENTIRE AGREEMENT
+
+This Agreement constitutes the entire agreement between the parties and supersedes all prior or contemporaneous agreements, representations, or understandings.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first written above.
+
+**LICENSOR:**                          **LICENSEE:**
+
+_________________________              _________________________
+[NAME]                                 [NAME]
+[TITLE]                                [TITLE]
+[DATE]                                 [DATE]`;
+
+        // Industrial Demo Button Handler
+        document.addEventListener('DOMContentLoaded', function () {
+            const industrialDemoBtn = document.getElementById('industrialDemoBtn');
+            if (industrialDemoBtn) {
+                industrialDemoBtn.addEventListener('click', function () {
+                    const SAMPLE_MANUAL = `# Hydraulic Pump Maintenance Manual
+
+**Equipment ID:** HP-2024-001
+**Model:** Industrial Hydraulic Pump Series 5000
+**Last Service:** 2024-01-15
+
+## Safety Warnings
+
+⚠️ **CRITICAL:** Always depressurize system before maintenance. Failure to do so may result in serious injury.
+
+## Common Error Codes
+
+### E001: Low Pressure Warning
+- **Cause:** Insufficient hydraulic fluid or air in system
+- **Action:** Check fluid level, bleed air from lines
+- **Severity:** Medium
+- **Downtime:** 15-30 minutes
+
+### E002: Overheating
+- **Cause:** Blocked cooling fins, excessive load, or low fluid
+- **Action:** Inspect cooling system, reduce load, check fluid level
+- **Severity:** High
+- **Downtime:** 1-2 hours
+
+### E003: Seal Leak
+- **Cause:** Worn seal, misalignment, or excessive pressure
+- **Action:** Replace seal, check alignment, verify pressure settings
+- **Severity:** High (Safety Risk)
+- **Downtime:** 2-4 hours
+
+## Maintenance Schedule
+
+### Daily Checks
+- Visual inspection for leaks
+- Check fluid level (should be between MIN and MAX marks)
+- Listen for unusual noises
+
+### Weekly Checks
+- Clean cooling fins
+- Check belt tension
+- Inspect electrical connections
+
+### Monthly Checks
+- Replace filters
+- Test pressure relief valve
+- Lubricate moving parts
+
+## Part Numbers
+
+- **Seal Kit:** HP-SEAL-5000-KIT
+- **Filter:** HP-FILTER-5000
+- **Fluid (5L):** HP-FLUID-ISO46
+
+## One Point Lesson (OPL): Quick Seal Replacement
+
+1. Depressurize system (wait 5 minutes)
+2. Remove cover plate (4 bolts)
+3. Extract old seal carefully
+4. Install new seal (lubricate with hydraulic fluid)
+5. Reinstall cover plate
+6. Pressurize and test
+
+**Time:** 30 minutes
+**Tools Required:** Socket set, seal puller, hydraulic fluid`;
+
+                    // Store sample manual in localStorage
+                    localStorage.setItem('convertedDocument', SAMPLE_MANUAL);
+                    localStorage.setItem('documentSource', 'machine_manual');
+
+                    // Show confirmation
+                    const originalText = industrialDemoBtn.textContent;
+                    industrialDemoBtn.textContent = '✓ Loaded! Redirecting...';
+                    industrialDemoBtn.style.background = '#10b981';
+                    industrialDemoBtn.style.borderColor = '#10b981';
+                    industrialDemoBtn.style.color = 'white';
+
+                    // Redirect to RAG chat page
+                    setTimeout(() => {
+                        window.location.href = '/rag';
+                    }, 1000);
+                });
+            }
+        });
     </script>
 </body>
 

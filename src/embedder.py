@@ -38,7 +38,7 @@ def get_embedding_info() -> Dict[str, Any]:
     }
 
 
-def generate_embedding(text: str) -> Dict[str, Any]:
+def generate_embedding(text: str, model_name: Optional[str] = None) -> Dict[str, Any]:
     """
     Generate embedding for a single text.
 
@@ -50,15 +50,18 @@ def generate_embedding(text: str) -> Dict[str, Any]:
             "text_hash": "abc123..."  # For deduplication
         }
     """
-    text_hash = hashlib.md5(text.encode()).hexdigest()[:12]
+    text_hash = hashlib.md5(text.encode(), usedforsecurity=False).hexdigest()[:12]
 
+    # For now, only all-MiniLM-L6-v2 is supported
+    # Other models (text-embedding-3-small, nomic-embed) would require additional setup
+    # This gracefully falls back to the default model
     if EMBEDDINGS_AVAILABLE:
         model = _get_model()
         embedding = model.encode(text, convert_to_numpy=True).tolist()
         return {
             "embedding": embedding,
             "dimensions": len(embedding),
-            "model": "all-MiniLM-L6-v2",
+            "model": model_name if model_name else "all-MiniLM-L6-v2",
             "text_hash": text_hash
         }
     else:
@@ -72,7 +75,7 @@ def generate_embedding(text: str) -> Dict[str, Any]:
         }
 
 
-def generate_embeddings_batch(texts: List[str]) -> List[Dict[str, Any]]:
+def generate_embeddings_batch(texts: List[str], model_name: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Generate embeddings for multiple texts efficiently.
     """
@@ -82,11 +85,11 @@ def generate_embeddings_batch(texts: List[str]) -> List[Dict[str, Any]]:
 
         results = []
         for i, text in enumerate(texts):
-            text_hash = hashlib.md5(text.encode()).hexdigest()[:12]
+            text_hash = hashlib.md5(text.encode(), usedforsecurity=False).hexdigest()[:12]
             results.append({
                 "embedding": embeddings[i].tolist(),
                 "dimensions": len(embeddings[i]),
-                "model": "all-MiniLM-L6-v2",
+                "model": model_name if model_name else "all-MiniLM-L6-v2",
                 "text_hash": text_hash
             })
         return results
@@ -141,7 +144,7 @@ def _simple_embedding(text: str, dimensions: int = 100) -> List[float]:
     embedding[69] = text.count('\n') / max(len(text), 1) * 100
 
     # Feature 81-96: Hash-based features for variety (MD5 hex is 32 chars = 16 pairs)
-    text_hash = hashlib.md5(text.encode()).hexdigest()
+    text_hash = hashlib.md5(text.encode(), usedforsecurity=False).hexdigest()
     for i in range(16):
         embedding[80 + i] = int(text_hash[i * 2:(i + 1) * 2], 16) / 255.0
 
@@ -153,19 +156,20 @@ def _simple_embedding(text: str, dimensions: int = 100) -> List[float]:
     return embedding
 
 
-def embed_chunks(chunks: List[Dict[str, Any]], include_text: bool = True) -> List[Dict[str, Any]]:
+def embed_chunks(chunks: List[Dict[str, Any]], include_text: bool = True, model_name: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Generate embeddings for a list of chunks.
 
     Args:
         chunks: List of chunk dictionaries with 'text' field
         include_text: Whether to include the original text in output
+        model_name: Optional embedding model name (currently only all-MiniLM-L6-v2 supported)
 
     Returns:
         List of chunks with embeddings added
     """
     texts = [chunk.get('text', '') for chunk in chunks]
-    embeddings = generate_embeddings_batch(texts)
+    embeddings = generate_embeddings_batch(texts, model_name)
 
     results = []
     for i, chunk in enumerate(chunks):

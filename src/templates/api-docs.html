@@ -4,86 +4,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Documentation | paulocadias.com</title>
-    <link rel="icon" type="image/svg+xml"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='15' fill='%232563eb'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>MD</text></svg>">
-    <link rel="stylesheet" href="/static/style.css">
+    <title>API Documentation - MegaDoc Platform</title>
+    {% include 'includes/head_common.html' %}
     <style>
-        /* Dark theme overrides for API docs */
+        /* API Docs specific styles */
         :root {
-            --bg: #0f172a;
-            --surface: #1e293b;
-            --text: #f1f5f9;
-            --text-light: #94a3b8;
-            --border: #334155;
-            --warning: #f59e0b;
-        }
-
-        .app-container {
-            max-width: 900px;
-        }
-
-        /* Branded header nav */
-        .site-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 0;
-            margin-bottom: 1rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .site-header a {
-            text-decoration: none;
-        }
-
-        .site-header .brand-link {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--text);
-        }
-
-        .site-header .brand-logo {
-            width: 36px;
-            height: 36px;
-            background: var(--primary);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 0.9rem;
-        }
-
-        .site-header .brand-name {
-            font-weight: 700;
-            font-size: 1.1rem;
-        }
-
-        .site-header nav {
-            display: flex;
-            gap: 1.5rem;
-            background: none;
-            border: none;
-            padding: 0;
-            margin: 0;
-            border-radius: 0;
-        }
-
-        .site-header nav a {
-            color: var(--text-light);
-            font-weight: 500;
-            padding: 0;
-            background: none;
-            border-radius: 0;
-        }
-
-        .site-header nav a:hover,
-        .site-header nav a.active {
-            color: var(--primary);
-            background: none;
+            --code-bg: #f1f5f9;
         }
 
         /* Page header */
@@ -103,7 +29,25 @@
 
         h1 {
             font-size: 2.5rem;
+            font-weight: 800;
             margin: 0.5rem 0;
+            background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            color: var(--primary);
+            padding: 0.5rem 1.25rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+            box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
         }
 
         .subtitle {
@@ -222,23 +166,23 @@
 
         code {
             font-family: 'Monaco', 'Menlo', monospace;
-            color: #e6edf3;
+            color: #24292e;
         }
 
         .comment {
-            color: #8b949e;
+            color: #6a737d;
         }
 
         .string {
-            color: #a5d6ff;
+            color: #032f62;
         }
 
         .keyword {
-            color: #ff7b72;
+            color: #d73a49;
         }
 
         .number {
-            color: #79c0ff;
+            color: #005cc5;
         }
 
         /* Tables */
@@ -357,27 +301,12 @@
 </head>
 
 <body>
-    <!-- Global Header - Outside container for consistent positioning -->
-    <div class="site-header-wrapper">
-        <header class="site-header">
-            <a href="/" class="logo-link">
-                <div class="logo-icon">MD</div>
-                <span class="logo-text">MegaDoc</span>
-            </a>
-            <nav>
-                <a href="/">Convert</a>
-                <a href="/rag">RAG Pipeline</a>
-                <a href="/compare">Compare</a>
-                <a href="/architecture">Architecture</a>
-                <a href="/use-cases">Use Cases</a>
-                <a href="/api/docs" class="active">API</a>
-                <a href="/contact">Contact</a>
-            </nav>
-        </header>
-    </div>
+    <!-- Global Header -->
+    {% include 'includes/header.html' %}
 
     <div class="app-container">
         <div class="page-header">
+            <span class="badge">REST API • DEVELOPER TOOLS</span>
             <h1>API Documentation</h1>
             <p class="subtitle">Document to Markdown Conversion API</p>
             <span class="version">v1.0.0</span>
@@ -392,7 +321,6 @@
                 <li><a href="#convert">Convert</a></li>
                 <li><a href="#analyze">Analyze</a></li>
                 <li><a href="#chunk">Chunk</a></li>
-                <li><a href="#compare">Compare</a></li>
                 <li><a href="#embed">Embeddings</a></li>
                 <li><a href="#export">Export</a></li>
                 <li><a href="#pipeline">Pipeline</a></li>
@@ -406,7 +334,7 @@
         <section id="overview">
             <h2>Overview</h2>
             <p>Complete document processing API for RAG pipelines and AI applications.
-                Convert, analyze, chunk, embed, and export documents—all with zero data retention.</p>
+                Convert, analyze, chunk, embed, and export documents—all with ephemeral session storage (TTL: 30 mins).</p>
 
             <h3>Base URL</h3>
             <pre><code>{{ base_url }}</code></pre>
@@ -419,16 +347,30 @@
                 <li>Embeddings generation (all-MiniLM-L6-v2)</li>
                 <li>Export to ChromaDB, LanceDB, JSONL</li>
                 <li>Full RAG pipeline in one API call</li>
-                <li>Zero data retention—files deleted instantly</li>
+                <li>Ephemeral session storage—data held in memory cache (TTL: 30 mins), then cryptographically wiped</li>
             </ul>
         </section>
 
         <section id="authentication">
             <h2>Authentication</h2>
             <p>The public API endpoints do not require authentication. Rate limiting is applied per IP address.</p>
-            <p style="margin-top: 1rem; color: var(--warning);">
-                For high-volume usage, contact us for API key access.
-            </p>
+
+            <h3 style="margin-top: 1.5rem;">API Key Authentication (Optional)</h3>
+            <p>For high-volume usage or higher rate limits, API key authentication is available.</p>
+
+            <h4>Request Header</h4>
+            <pre><code><span class="keyword">Authorization:</span> <span class="string">Bearer YOUR_API_KEY</span></code></pre>
+
+            <h4>Example with Authentication</h4>
+            <pre><code><span class="keyword">curl</span> -X POST {{ base_url }}/api/convert \
+  -H <span class="string">"Authorization: Bearer YOUR_API_KEY"</span> \
+  -F <span class="string">"file=@document.pdf"</span></code></pre>
+
+            <div
+                style="background: #eff6ff; border-left: 4px solid var(--primary); padding: 1rem; margin-top: 1rem; border-radius: 4px;">
+                <p style="margin: 0; font-size: 0.9rem;"><strong>Contact for API Keys:</strong> Email for API
+                    access with higher limits and SLA guarantees.</p>
+            </div>
         </section>
 
         <section id="security-architecture">
@@ -440,7 +382,7 @@
                 style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
                 <div
                     style="background: var(--surface); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border);">
-                    <h4 style="margin-top: 0; color: var(--primary);">Zero Data Retention (ZDR)</h4>
+                    <h4 style="margin-top: 0; color: var(--primary);">Ephemeral Session Storage</h4>
                     <p style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 0;">
                         Files are processed in ephemeral memory and deleted immediately after conversion. We do not
                         store, log, or train on your document content.
@@ -529,6 +471,35 @@ data = response.json()
   <span class="string">"content"</span>: <span class="string">"# Document Title\n\nContent here..."</span>,
   <span class="string">"request_id"</span>: <span class="string">"A1B2C3D4"</span>
 }</code></pre>
+
+            <h3>Response Headers</h3>
+            <table>
+                <tr>
+                    <th>Header</th>
+                    <th>Example Value</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>X-RateLimit-Limit</code></td>
+                    <td>1000</td>
+                    <td>Maximum requests per hour</td>
+                </tr>
+                <tr>
+                    <td><code>X-RateLimit-Remaining</code></td>
+                    <td>998</td>
+                    <td>Remaining requests in current window</td>
+                </tr>
+                <tr>
+                    <td><code>X-RateLimit-Reset</code></td>
+                    <td>1638360000</td>
+                    <td>Unix timestamp when limit resets</td>
+                </tr>
+                <tr>
+                    <td><code>X-Request-ID</code></td>
+                    <td>A1B2C3D4</td>
+                    <td>Unique request identifier for debugging</td>
+                </tr>
+            </table>
 
             <h3>Response Codes</h3>
             <table>
@@ -634,47 +605,99 @@ data = response.json()
             <p>Count tokens in text using tiktoken (cl100k_base encoding).</p>
 
             <pre><code><span class="comment"># Request body</span>
-{<span class="string">"text"</span>: <span class="string">"Your text to count tokens"</span>}
+{<span class="string">"content"</span>: <span class="string">"Your text to count tokens"</span>}
 
 <span class="comment"># Response</span>
-{<span class="string">"token_count"</span>: <span class="number">6</span>, <span class="string">"encoding"</span>: <span class="string">"cl100k_base"</span>}</code></pre>
+{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"token_count"</span>: <span class="number">6</span>,
+  <span class="string">"character_count"</span>: <span class="number">25</span>,
+  <span class="string">"encoding"</span>: <span class="string">"cl100k_base"</span>,
+  <span class="string">"method"</span>: <span class="string">"tiktoken"</span>
+}</code></pre>
         </section>
 
-        <section id="compare">
-            <h2>Document Comparison</h2>
+        <section id="inference-gateway">
+            <h2>Inference Gateway</h2>
+            <p>Unified interface for LLM inference with automatic failover and multi-model support.</p>
 
-            <h3><span class="method post">POST</span><span class="endpoint">/api/compare</span></h3>
-            <p>Compare two documents and show differences (unified diff format).</p>
+            <h3><span class="method post">POST</span><span class="endpoint">/api/chat</span></h3>
+            <p>Send chat completion requests through the vendor-agnostic model gateway. Supports multiple AI providers (Gemini, DeepSeek, Llama, Mistral) with automatic rate limit handling.</p>
 
-            <h3>Request</h3>
+            <h3>Request Body</h3>
             <table>
                 <tr>
                     <th>Parameter</th>
                     <th>Type</th>
+                    <th>Required</th>
                     <th>Description</th>
                 </tr>
                 <tr>
-                    <td><code>file1</code></td>
-                    <td>File</td>
-                    <td>First document</td>
+                    <td><code>model</code></td>
+                    <td>string</td>
+                    <td>Yes</td>
+                    <td>Target model identifier (e.g., 'Google Gemini 2.0 Flash', 'DeepSeek V3', 'Meta Llama 3.1 8B')</td>
                 </tr>
                 <tr>
-                    <td><code>file2</code></td>
-                    <td>File</td>
-                    <td>Second document</td>
+                    <td><code>messages</code></td>
+                    <td>array</td>
+                    <td>Yes</td>
+                    <td>Array of message objects with 'role' ('user'|'assistant'|'system') and 'content' (string)</td>
+                </tr>
+                <tr>
+                    <td><code>context</code></td>
+                    <td>string</td>
+                    <td>No</td>
+                    <td>Retrieved RAG chunks or document context to include in system prompt</td>
+                </tr>
+                <tr>
+                    <td><code>domain</code></td>
+                    <td>string</td>
+                    <td>No</td>
+                    <td>Domain profile for dynamic system prompting: <code>'general'</code>, <code>'legal'</code>, <code>'medical'</code>, or <code>'technical'</code>. Defaults to <code>'general'</code>. (ADR-005: Domain Injection Pattern)</td>
                 </tr>
             </table>
+
+            <h3>Example Request</h3>
+            <pre><code>{
+  <span class="string">"model"</span>: <span class="string">"Google Gemini 2.0 Flash"</span>,
+  <span class="string">"messages"</span>: [
+    {<span class="string">"role"</span>: <span class="string">"user"</span>, <span class="string">"content"</span>: <span class="string">"What are the key terms in this contract?"</span>}
+  ],
+  <span class="string">"context"</span>: <span class="string">"Retrieved document chunks..."</span>,
+  <span class="string">"domain"</span>: <span class="string">"legal"</span>
+}</code></pre>
 
             <h3>Response</h3>
             <pre><code>{
   <span class="string">"success"</span>: <span class="keyword">true</span>,
-  <span class="string">"diff"</span>: <span class="string">"--- file1.md\n+++ file2.md\n@@ -1,3 +1,4 @@..."</span>,
-  <span class="string">"stats"</span>: {
-    <span class="string">"additions"</span>: <span class="number">15</span>,
-    <span class="string">"deletions"</span>: <span class="number">8</span>,
-    <span class="string">"similarity"</span>: <span class="number">0.85</span>
-  }
+  <span class="string">"response"</span>: <span class="string">"Based on the document, the key terms include..."</span>,
+  <span class="string">"latency_ms"</span>: <span class="number">340</span>,
+  <span class="string">"cost"</span>: <span class="number">0.00</span>,
+  <span class="string">"model"</span>: <span class="string">"Google Gemini 2.0 Flash"</span>,
+  <span class="string">"domain"</span>: <span class="string">"legal"</span>,
+  <span class="string">"request_id"</span>: <span class="string">"req_abc123"</span>
 }</code></pre>
+
+            <h3>Error Responses</h3>
+            <p><strong>429 Too Many Requests (Rate Limit):</strong></p>
+            <pre><code>{
+  <span class="string">"error"</span>: <span class="string">"Queue Full"</span>,
+  <span class="string">"retry_after"</span>: <span class="number">3</span>,
+  <span class="string">"request_id"</span>: <span class="string">"req_abc123"</span>
+}</code></pre>
+
+            <p><strong>503 Service Unavailable (API Key Missing):</strong></p>
+            <pre><code>{
+  <span class="string">"error"</span>: <span class="string">"Vision service not configured"</span>,
+  <span class="string">"request_id"</span>: <span class="string">"req_abc123"</span>
+}</code></pre>
+
+            <div style="background: #eff6ff; border-left: 4px solid var(--primary); padding: 1rem; margin-top: 1rem; border-radius: 4px;">
+                <p style="margin: 0; font-size: 0.9rem; color: var(--text);">
+                    <strong>Note:</strong> The gateway uses domain-specific system prompts (ADR-005: Domain Injection Pattern) for compliance. Rate limits (429) are automatically handled with retry-after headers. Maximum 5 messages per session enforced client-side. Domain selection enables multi-tenant isolation and domain-agnostic architecture.
+                </p>
+            </div>
         </section>
 
         <section id="embed">
@@ -832,6 +855,69 @@ data = response.json()
 }</code></pre>
         </section>
 
+        <section id="webhooks">
+            <h2>Webhooks (Async Processing)</h2>
+
+            <h3><span class="method post">POST</span><span class="endpoint">/api/webhook/callback</span></h3>
+            <p>For long-running tasks (e.g., processing 500-page PDFs), use webhooks for async notifications instead of
+                synchronous waiting.</p>
+
+            <h3>Request Parameters</h3>
+            <table>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                </tr>
+                <tr>
+                    <td><code>file</code></td>
+                    <td>File</td>
+                    <td>Document to process</td>
+                </tr>
+                <tr>
+                    <td><code>callback_url</code></td>
+                    <td>string</td>
+                    <td>URL to POST results when processing completes</td>
+                </tr>
+                <tr>
+                    <td><code>operation</code></td>
+                    <td>string</td>
+                    <td>Operation type: convert, pipeline, analyze</td>
+                </tr>
+            </table>
+
+            <h3>Example Request</h3>
+            <pre><code><span class="keyword">curl</span> -X POST {{ base_url }}/api/webhook/callback \
+  -F <span class="string">"file=@large_document.pdf"</span> \
+  -F <span class="string">"callback_url=https://your-server.com/webhook"</span> \
+  -F <span class="string">"operation=pipeline"</span></code></pre>
+
+            <h3>Immediate Response</h3>
+            <pre><code>{
+  <span class="string">"success"</span>: <span class="keyword">true</span>,
+  <span class="string">"task_id"</span>: <span class="string">"task_abc123"</span>,
+  <span class="string">"status"</span>: <span class="string">"processing"</span>,
+  <span class="string">"estimated_time"</span>: <span class="string">"2-5 minutes"</span>
+}</code></pre>
+
+            <h3>Callback Payload (When Complete)</h3>
+            <pre><code><span class="comment"># POST to your callback_url</span>
+{
+  <span class="string">"task_id"</span>: <span class="string">"task_abc123"</span>,
+  <span class="string">"status"</span>: <span class="string">"completed"</span>,
+  <span class="string">"result"</span>: {
+    <span class="comment">/* Same format as synchronous response */</span>
+  },
+  <span class="string">"processing_time_ms"</span>: <span class="number">145000</span>
+}</code></pre>
+
+            <div
+                style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 1rem; margin-top: 1rem; border-radius: 4px;">
+                <p style="margin: 0; font-size: 0.9rem; color: var(--text);"><strong>Note:</strong> Webhook endpoints
+                    must be publicly accessible and respond with 200 OK to acknowledge receipt.</p>
+            </div>
+        </section>
+
         <section id="formats">
             <h2>Supported Formats</h2>
 
@@ -844,9 +930,13 @@ data = response.json()
     <span class="string">".pdf"</span>, <span class="string">".docx"</span>, <span class="string">".doc"</span>, <span class="string">".xlsx"</span>, <span class="string">".xls"</span>,
     <span class="string">".pptx"</span>, <span class="string">".ppt"</span>, <span class="string">".html"</span>, <span class="string">".htm"</span>, <span class="string">".txt"</span>,
     <span class="string">".csv"</span>, <span class="string">".json"</span>, <span class="string">".xml"</span>, <span class="string">".jpg"</span>, <span class="string">".jpeg"</span>,
-    <span class="string">".png"</span>, <span class="string">".gif"</span>, <span class="string">".bmp"</span>, <span class="string">".epub"</span>
+    <span class="string">".png"</span>, <span class="string">".gif"</span>, <span class="string">".bmp"</span>, <span class="string">".epub"</span>, <span class="string">".zip"</span>
   ],
-  <span class="string">"max_file_size_mb"</span>: <span class="number">50</span>
+  <span class="string">"max_file_size_mb"</span>: <span class="number">50</span>,
+  <span class="string">"rate_limit"</span>: {
+    <span class="string">"requests"</span>: <span class="number">200</span>,
+    <span class="string">"window_seconds"</span>: <span class="number">60</span>
+  }
 }</code></pre>
         </section>
 
@@ -933,7 +1023,7 @@ data = response.json()
                 </tr>
                 <tr>
                     <td>Requests per IP</td>
-                    <td>20</td>
+                    <td>200</td>
                     <td>1 minute</td>
                 </tr>
                 <tr>
@@ -963,14 +1053,11 @@ data = response.json()
                 </tr>
             </table>
         </section>
-
-        <footer>
-            <p>&copy; 2025 paulocadias.com</p>
-            <p style="margin-top: 0.5rem;">
-                <a href="/">Converter</a> | <a href="/admin">Dashboard</a>
-            </p>
-        </footer>
     </div>
+
+    <!-- Compact Footer - Full Width -->
+    <!-- Footer -->
+    {% include 'includes/footer.html' %}
 
     <script>
         async function fetchStats() {

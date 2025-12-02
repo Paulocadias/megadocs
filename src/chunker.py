@@ -15,12 +15,21 @@ import logging
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, asdict
 
-# Token counting library
-try:
-    import tiktoken
-    TIKTOKEN_AVAILABLE = True
-except ImportError:
-    TIKTOKEN_AVAILABLE = False
+# Token counting library - lazy loaded to avoid slow startup
+tiktoken = None
+TIKTOKEN_AVAILABLE = False
+
+def _load_tiktoken():
+    """Lazy load tiktoken to avoid blocking startup."""
+    global tiktoken, TIKTOKEN_AVAILABLE
+    if tiktoken is None:
+        try:
+            import tiktoken as _tiktoken
+            tiktoken = _tiktoken
+            TIKTOKEN_AVAILABLE = True
+        except ImportError:
+            TIKTOKEN_AVAILABLE = False
+    return TIKTOKEN_AVAILABLE
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +62,9 @@ def chunk_document(
         text: The text to chunk
         chunk_size: Target chunk size (in tokens or characters depending on strategy)
         chunk_overlap: Overlap between chunks
-        strategy: "token" (tiktoken-based) or "character" (simple character split)
+        strategy: "token" (tiktoken-based), "character" (simple character split),
+                  "recursive_character" (recursive splitting), "semantic_window" (sentence-aware),
+                  or "fixed_size" (exact size chunks)
 
     Returns:
         Dictionary containing chunks and metadata
@@ -65,11 +76,18 @@ def chunk_document(
     chunk_size = max(64, min(chunk_size, 8192))
     chunk_overlap = max(0, min(chunk_overlap, chunk_size // 2))
 
-    if strategy == "token" and TIKTOKEN_AVAILABLE:
+    # Map strategy names
+    if strategy == "recursive_character":
+        chunks = _chunk_recursive_character(text, chunk_size, chunk_overlap)
+    elif strategy == "semantic_window":
+        chunks = _chunk_semantic_window(text, chunk_size, chunk_overlap)
+    elif strategy == "fixed_size":
+        chunks = _chunk_fixed_size(text, chunk_size, chunk_overlap)
+    elif strategy == "token" and _load_tiktoken():
         chunks = _chunk_by_tokens(text, chunk_size, chunk_overlap)
     else:
         chunks = _chunk_by_characters(text, chunk_size, chunk_overlap)
-        if strategy == "token" and not TIKTOKEN_AVAILABLE:
+        if strategy == "token" and not _load_tiktoken():
             logger.warning("tiktoken not available, falling back to character chunking")
 
     # Calculate statistics
@@ -84,7 +102,7 @@ def chunk_document(
             "total_characters": total_chars,
             "chunk_size": chunk_size,
             "chunk_overlap": chunk_overlap,
-            "strategy": strategy if (strategy == "character" or not TIKTOKEN_AVAILABLE) else "token",
+            "strategy": strategy,
             "encoding": DEFAULT_ENCODING if TIKTOKEN_AVAILABLE else None,
             "average_chunk_tokens": round(total_tokens / max(len(chunks), 1), 1),
             "average_chunk_chars": round(total_chars / max(len(chunks), 1), 1)
@@ -241,10 +259,194 @@ def _chunk_by_characters(
 
 
 def _estimate_tokens(text: str) -> int:
-    """Estimate token count without tiktoken (rough approximation)."""
+    """Estimate token count (uses tiktoken if available, otherwise approximation)."""
+    if _load_tiktoken():
+        try:
+            encoding = tiktoken.get_encoding(DEFAULT_ENCODING)
+            return len(encoding.encode(text))
+        except Exception:
+            pass
     # Rough estimate: ~4 characters per token for English
-    # This is a common approximation used when tiktoken isn't available
     return max(1, len(text) // 4)
+
+
+def _chunk_recursive_character(
+    text: str,
+    chunk_size: int,
+    chunk_overlap: int
+) -> List[Chunk]:
+    """
+    Recursive character chunking - splits on paragraphs, then sentences, then characters.
+    """
+    # Split by double newlines (paragraphs)
+    paragraphs = text.split('\n\n')
+    chunks = []
+    current_chunk = ""
+    current_start = 0
+    chunk_index = 0
+    
+    for para in paragraphs:
+        para = para.strip()
+        if not para:
+            continue
+        
+        # If adding this paragraph would exceed size, finalize current chunk
+        if current_chunk and len(current_chunk) + len(para) + 2 > chunk_size * 4:  # Convert to chars
+            # Create chunk
+            chunk_text = current_chunk.strip()
+            chunks.append(Chunk(
+                index=chunk_index,
+                text=chunk_text,
+                token_count=_estimate_tokens(chunk_text),
+                char_count=len(chunk_text),
+                start_char=current_start,
+                end_char=current_start + len(current_chunk),
+                metadata={}
+            ))
+            chunk_index += 1
+
+            # Start new chunk with overlap
+            if chunk_overlap > 0 and current_chunk:
+                overlap_text = current_chunk[-(chunk_overlap * 4):]
+                current_chunk = overlap_text + "\n\n" + para
+                current_start = current_start + len(current_chunk) - len(overlap_text) - len(para) - 2
+            else:
+                current_chunk = para
+                current_start = current_start + len(current_chunk) - len(para)
+        else:
+            if current_chunk:
+                current_chunk += "\n\n" + para
+            else:
+                current_chunk = para
+
+    # Add final chunk
+    if current_chunk:
+        chunk_text = current_chunk.strip()
+        chunks.append(Chunk(
+            index=chunk_index,
+            text=chunk_text,
+            token_count=_estimate_tokens(chunk_text),
+            char_count=len(chunk_text),
+            start_char=current_start,
+            end_char=current_start + len(current_chunk),
+            metadata={}
+        ))
+    
+    return chunks
+
+
+def _chunk_semantic_window(
+    text: str,
+    chunk_size: int,
+    chunk_overlap: int
+) -> List[Chunk]:
+    """
+    Semantic window chunking - splits on sentences to preserve semantic meaning.
+    """
+    # Split into sentences (simple regex-based)
+    sentence_pattern = re.compile(r'([.!?]+[\s\n]+|[\n]{2,})')
+    sentences = sentence_pattern.split(text)
+    
+    # Recombine sentences with their separators
+    combined = []
+    for i in range(0, len(sentences) - 1, 2):
+        if i + 1 < len(sentences):
+            combined.append(sentences[i] + sentences[i + 1])
+        else:
+            combined.append(sentences[i])
+    
+    chunks = []
+    current_chunk = ""
+    current_start = 0
+    chunk_index = 0
+    
+    for sentence in combined:
+        sentence = sentence.strip()
+        if not sentence:
+            continue
+        
+        # Estimate if adding this sentence would exceed size
+        if current_chunk and _estimate_tokens(current_chunk + " " + sentence) > chunk_size:
+            # Create chunk
+            chunk_text = current_chunk.strip()
+            chunks.append(Chunk(
+                index=chunk_index,
+                text=chunk_text,
+                token_count=_estimate_tokens(chunk_text),
+                char_count=len(chunk_text),
+                start_char=current_start,
+                end_char=current_start + len(current_chunk),
+                metadata={}
+            ))
+            chunk_index += 1
+
+            # Start new chunk with overlap
+            if chunk_overlap > 0 and current_chunk:
+                # Get last N words for overlap
+                words = current_chunk.split()
+                overlap_words = words[-chunk_overlap//4:] if len(words) > chunk_overlap//4 else words
+                overlap_text = " ".join(overlap_words)
+                current_chunk = overlap_text + " " + sentence
+                current_start = current_start + len(current_chunk) - len(overlap_text) - len(sentence) - 1
+            else:
+                current_chunk = sentence
+                current_start = current_start + len(current_chunk) - len(sentence)
+        else:
+            if current_chunk:
+                current_chunk += " " + sentence
+            else:
+                current_chunk = sentence
+
+    # Add final chunk
+    if current_chunk:
+        chunk_text = current_chunk.strip()
+        chunks.append(Chunk(
+            index=chunk_index,
+            text=chunk_text,
+            token_count=_estimate_tokens(chunk_text),
+            char_count=len(chunk_text),
+            start_char=current_start,
+            end_char=current_start + len(current_chunk),
+            metadata={}
+        ))
+    
+    return chunks
+
+
+def _chunk_fixed_size(
+    text: str,
+    chunk_size: int,
+    chunk_overlap: int
+) -> List[Chunk]:
+    """
+    Fixed size chunking - creates chunks of approximately chunk_size tokens.
+    """
+    chunks = []
+    chunk_index = 0
+    start = 0
+    
+    while start < len(text):
+        # Estimate character position for chunk_size tokens
+        char_size = chunk_size * 4  # Rough estimate
+        end = min(start + char_size, len(text))
+        chunk_text = text[start:end]
+
+        chunks.append(Chunk(
+            index=chunk_index,
+            text=chunk_text,
+            token_count=_estimate_tokens(chunk_text),
+            char_count=len(chunk_text),
+            start_char=start,
+            end_char=end,
+            metadata={}
+        ))
+
+        chunk_index += 1
+        # Apply overlap
+        overlap_chars = chunk_overlap * 4
+        start = end - overlap_chars if end - overlap_chars > start else end
+    
+    return chunks
 
 
 def get_token_count(text: str) -> Dict[str, Any]:
@@ -257,7 +459,7 @@ def get_token_count(text: str) -> Dict[str, Any]:
     if not text:
         return {"token_count": 0, "encoding": None}
 
-    if TIKTOKEN_AVAILABLE:
+    if _load_tiktoken():
         try:
             encoding = tiktoken.get_encoding(DEFAULT_ENCODING)
             tokens = encoding.encode(text)

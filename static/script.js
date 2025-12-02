@@ -46,9 +46,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportChunksBtn = document.getElementById('exportChunksBtn');
 
     let selectedFile = null;
+    let selectedFiles = [];  // Queue for multiple file upload
     let currentMarkdown = '';
     let currentFileName = '';
     let currentChunks = null;
+    let rateLimitCountdown = null;  // For rate limit timer
 
     // Exit early if elements don't exist (non-converter pages)
     if (!dropZone || !fileInput || !convertBtn) {
@@ -69,7 +71,11 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         dropZone.classList.remove('drag-over');
         if (e.dataTransfer.files.length) {
-            handleFile(e.dataTransfer.files[0]);
+            if (e.dataTransfer.files.length === 1) {
+                handleFile(e.dataTransfer.files[0]);
+            } else {
+                handleMultipleFiles(Array.from(e.dataTransfer.files));
+            }
         }
     });
 
@@ -78,15 +84,56 @@ document.addEventListener('DOMContentLoaded', () => {
         fileInput.click();
     });
 
-    // File input change
+    // File input change (support multiple files)
     fileInput.addEventListener('change', () => {
         if (fileInput.files.length) {
-            handleFile(fileInput.files[0]);
+            if (fileInput.files.length === 1) {
+                handleFile(fileInput.files[0]);
+            } else {
+                // Multiple files selected - show all
+                handleMultipleFiles(Array.from(fileInput.files));
+            }
         }
     });
 
+    function handleMultipleFiles(files) {
+        if (files.length === 0) return;
+
+        // Store all files for batch processing
+        selectedFiles = files;
+        selectedFile = files[0];  // Keep first file for compatibility
+
+        // Update UI - hide drop zone, show preview
+        dropZone.style.display = 'none';
+        if (filePreview) {
+            filePreview.classList.remove('hidden');
+        }
+
+        // Show list of all files
+        if (fileName) {
+            if (files.length === 1) {
+                fileName.textContent = files[0].name;
+            } else {
+                fileName.innerHTML = `<strong>${files.length} files:</strong> ${files.map(f => f.name).join(', ')}`;
+            }
+        }
+
+        convertBtn.disabled = false;
+        if (files.length > 1) {
+            showMessage(`${files.length} files selected. Click "Ingest Document" to process all.`, 'info');
+        } else {
+            hideMessage();
+        }
+    }
+
     function handleFile(file) {
         selectedFile = file;
+        selectedFiles = [file];  // Single file as array
+
+        // Check if file is an image
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp'];
+        const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+        const isImage = imageExtensions.includes(fileExt);
 
         // Update UI - hide drop zone, show preview
         dropZone.style.display = 'none';
@@ -95,6 +142,32 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (fileName) {
             fileName.textContent = file.name;
+        }
+
+        // Show image preview if it's an image
+        if (isImage && filePreview) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                // Create or update image preview
+                let imgPreview = filePreview.querySelector('.image-preview');
+                if (!imgPreview) {
+                    imgPreview = document.createElement('div');
+                    imgPreview.className = 'image-preview';
+                    imgPreview.style.cssText = 'margin-top: 1rem; text-align: center;';
+                    filePreview.appendChild(imgPreview);
+                }
+                imgPreview.innerHTML = `
+                    <img src="${e.target.result}" alt="Preview" style="max-width: 300px; max-height: 200px; border-radius: 8px; border: 2px solid var(--border);">
+                    <p style="margin-top: 0.5rem; font-size: 0.875rem; color: var(--text-light);">📸 Image will be analyzed by AI for RAG indexing</p>
+                `;
+            };
+            reader.readAsDataURL(file);
+        } else if (filePreview) {
+            // Remove image preview if switching from image to document
+            const imgPreview = filePreview.querySelector('.image-preview');
+            if (imgPreview) {
+                imgPreview.remove();
+            }
         }
 
         convertBtn.disabled = false;
@@ -121,8 +194,77 @@ document.addEventListener('DOMContentLoaded', () => {
         message.classList.add('hidden');
     }
 
+    // Rate Limit Indicator functions
+    function showRateLimitIndicator(retryAfter = 10) {
+        const indicator = document.getElementById('rateLimitIndicator');
+        const countdownEl = document.getElementById('countdownTimer');
+        const light1 = document.getElementById('light1');
+        const light2 = document.getElementById('light2');
+        const light3 = document.getElementById('light3');
+
+        if (!indicator) return;
+
+        indicator.classList.add('visible');
+
+        // Clear any existing countdown
+        if (rateLimitCountdown) {
+            clearInterval(rateLimitCountdown);
+        }
+
+        let remaining = retryAfter;
+
+        // Update semaphore lights based on time
+        function updateSemaphore() {
+            // Reset all lights
+            light1.className = 'semaphore-light';
+            light2.className = 'semaphore-light';
+            light3.className = 'semaphore-light';
+
+            if (remaining > 6) {
+                light1.classList.add('red');
+            } else if (remaining > 3) {
+                light1.classList.add('yellow');
+                light2.classList.add('yellow');
+            } else if (remaining > 0) {
+                light1.classList.add('green');
+                light2.classList.add('green');
+                light3.classList.add('green');
+            }
+        }
+
+        // Initial update
+        countdownEl.textContent = remaining;
+        updateSemaphore();
+
+        // Countdown timer
+        rateLimitCountdown = setInterval(() => {
+            remaining--;
+            countdownEl.textContent = remaining;
+            updateSemaphore();
+
+            if (remaining <= 0) {
+                clearInterval(rateLimitCountdown);
+                hideRateLimitIndicator();
+                // Re-enable the convert button
+                if (convertBtn) convertBtn.disabled = false;
+            }
+        }, 1000);
+    }
+
+    function hideRateLimitIndicator() {
+        const indicator = document.getElementById('rateLimitIndicator');
+        if (indicator) {
+            indicator.classList.remove('visible');
+        }
+        if (rateLimitCountdown) {
+            clearInterval(rateLimitCountdown);
+            rateLimitCountdown = null;
+        }
+    }
+
     function resetForm() {
         selectedFile = null;
+        selectedFiles = [];
         currentMarkdown = '';
         currentFileName = '';
         fileInput.value = '';
@@ -143,6 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         convertBtn.disabled = true;
         hideMessage();
+        hideRateLimitIndicator();
     }
 
     // Close result button
@@ -152,10 +295,59 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Convert button click - now uses API to get content
+    // Helper function to process a single file
+    async function processFile(file, options) {
+        return new Promise((resolve, reject) => {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('csrf_token', window.CSRF_TOKEN);
+            formData.append('output_format', options.outputFormat);
+            if (options.removeMacros) formData.append('remove_macros', 'true');
+            if (options.stripMetadata) formData.append('strip_metadata', 'true');
+            if (options.redactEmails) formData.append('redact_emails', 'true');
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/convert', true);
+            xhr.setRequestHeader('X-CSRF-Token', window.CSRF_TOKEN);
+
+            xhr.upload.onprogress = function(e) {
+                if (e.lengthComputable && options.onProgress) {
+                    options.onProgress((e.loaded / e.total) * 100);
+                }
+            };
+
+            xhr.onload = function() {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        resolve(data);
+                    } catch (e) {
+                        reject(new Error('Invalid server response'));
+                    }
+                } else if (xhr.status === 429) {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        reject(new Error(data.message || 'Rate limit exceeded. Please wait and try again.'));
+                    } catch (e) {
+                        reject(new Error('Rate limit exceeded'));
+                    }
+                } else {
+                    reject(new Error('Server error: ' + xhr.status));
+                }
+            };
+
+            xhr.onerror = function() {
+                reject(new Error('Network error'));
+            };
+
+            xhr.send(formData);
+        });
+    }
+
+    // Convert button click - supports batch processing
     convertBtn.addEventListener('click', async () => {
-        if (!selectedFile) {
-            showMessage('Please select a file first.', 'error');
+        if (selectedFiles.length === 0) {
+            showMessage('Please select file(s) first.', 'error');
             return;
         }
 
@@ -165,65 +357,153 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Prepare form data - always convert to markdown first
-        const formData = new FormData();
-        formData.append('file', selectedFile);
-        formData.append('csrf_token', window.CSRF_TOKEN);
-        formData.append('output_format', 'markdown');
+        // Get sanitization options
+        const removeMacros = document.getElementById('removeMacros')?.checked || false;
+        const stripMetadata = document.getElementById('stripMetadata')?.checked || false;
+        const redactEmails = document.getElementById('redactEmails')?.checked || false;
+        const outputFormat = document.getElementById('outputFormat')?.value || 'markdown';
 
-        // Update UI
-        convertBtn.disabled = true;
+        // Show validation indicator if any sanitization is enabled
+        const validationIndicator = document.getElementById('validationIndicator');
+        if (validationIndicator) {
+            validationIndicator.style.display = (removeMacros || stripMetadata || redactEmails) ? 'block' : 'none';
+        }
+
+        // UI elements
         const btnText = convertBtn.querySelector('.btn-text');
         const btnLoading = convertBtn.querySelector('.btn-loading');
+        const progressContainer = document.getElementById('uploadProgressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressPercent = document.getElementById('progressPercent');
+        const progressText = document.getElementById('progressText');
+
+        // Disable button and show loading
+        convertBtn.disabled = true;
         if (btnText) btnText.hidden = true;
-        if (btnLoading) {
-            btnLoading.hidden = false;
-            btnLoading.textContent = 'Preparing...';
-        }
-        showMessage('Converting your document...', 'success');
+        if (btnLoading) btnLoading.hidden = false;
 
-        // Simulated progress
-        let progress = 0;
-        const progressInterval = setInterval(() => {
-            progress += Math.random() * 10;
-            if (progress > 90) progress = 90;
-            if (btnLoading) btnLoading.textContent = `Converting... ${Math.round(progress)}%`;
-        }, 200);
+        const totalFiles = selectedFiles.length;
+        let successCount = 0;
+        let errorCount = 0;
+        let rateLimitHit = false;
+        let lastErrorMessage = '';
+        let lastSuccessData = null;
 
-        try {
-            const response = await fetch('/api/convert', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-CSRF-Token': window.CSRF_TOKEN
-                }
-            });
+        // Process each file
+        for (let i = 0; i < totalFiles; i++) {
+            const file = selectedFiles[i];
+            const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp'];
+            const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+            const isImage = imageExtensions.includes(fileExt);
 
-            clearInterval(progressInterval);
-            if (btnLoading) btnLoading.textContent = 'Finalizing...';
+            // Update UI for current file
+            if (btnLoading) {
+                btnLoading.textContent = totalFiles > 1
+                    ? `Processing ${i + 1}/${totalFiles}...`
+                    : (isImage ? 'Analyzing Visual Data...' : 'Processing...');
+            }
+            showMessage(
+                totalFiles > 1
+                    ? `Processing file ${i + 1} of ${totalFiles}: ${file.name}`
+                    : (isImage ? 'Analyzing image with AI vision model...' : 'Converting your document...'),
+                'success'
+            );
 
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                currentMarkdown = data.content;
-                currentFileName = data.filename.replace('.md', '');
-
-                // Show result section
-                showResultSection();
-                hideMessage();
-
-            } else {
-                showMessage(data.error || 'Conversion failed. Please try again.', 'error');
+            if (progressContainer) {
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+                progressPercent.textContent = '0%';
+                progressText.textContent = totalFiles > 1 ? `File ${i + 1}/${totalFiles}` : 'Uploading...';
             }
 
-        } catch (error) {
-            clearInterval(progressInterval);
-            console.error('Conversion error:', error);
-            showMessage('Network error. Please check your connection.', 'error');
+            try {
+                const data = await processFile(file, {
+                    outputFormat,
+                    removeMacros,
+                    stripMetadata,
+                    redactEmails,
+                    onProgress: (percent) => {
+                        if (progressBar) progressBar.style.width = percent + '%';
+                        if (progressPercent) progressPercent.textContent = Math.round(percent) + '%';
+                        if (percent >= 100 && progressText) {
+                            progressText.textContent = 'Processing...';
+                        }
+                    }
+                });
+
+                if (data.success) {
+                    successCount++;
+                    lastSuccessData = data;
+                    currentMarkdown = data.content;
+                    currentFileName = data.filename.replace('.md', '');
+                    localStorage.setItem('sourceType', data.source_type === 'image' ? 'image' : 'document');
+                    updateMemoryStatus(data.memory_count || 0);
+                } else {
+                    errorCount++;
+                    console.error(`Failed to process ${file.name}:`, data.error);
+                }
+            } catch (error) {
+                errorCount++;
+                lastErrorMessage = error.message;
+                console.error(`Error processing ${file.name}:`, error.message);
+                // Track rate limit errors
+                if (error.message.toLowerCase().includes('rate limit') || error.message.includes('Queue Full')) {
+                    rateLimitHit = true;
+                    // Extract retry_after from error or use default of 10 seconds
+                    let retryAfter = 10;
+                    const retryMatch = error.message.match(/(\d+)\s*seconds?/i);
+                    if (retryMatch) {
+                        retryAfter = parseInt(retryMatch[1], 10);
+                    }
+                    // Show the semaphore indicator with countdown
+                    showRateLimitIndicator(retryAfter);
+                }
+                // Show error but continue with other files
+                if (totalFiles === 1) {
+                    showMessage(error.message, 'error');
+                }
+            }
+
+            // Small delay between files to avoid rate limiting
+            if (i < totalFiles - 1) {
+                await new Promise(r => setTimeout(r, 500));
+            }
         }
 
+        // Hide progress
+        if (progressContainer) progressContainer.style.display = 'none';
+
+        // Show final result
+        if (successCount > 0) {
+            showResultSection();
+            if (totalFiles > 1) {
+                showMessage(
+                    errorCount > 0
+                        ? `Processed ${successCount} of ${totalFiles} files. ${errorCount} failed.`
+                        : `All ${totalFiles} files processed successfully!`,
+                    errorCount > 0 ? 'info' : 'success'
+                );
+            } else {
+                hideMessage();
+            }
+        } else {
+            // Show user-friendly error message based on error type
+            if (rateLimitHit) {
+                showMessage('Service is busy. Please wait a few seconds and try again.', 'warning');
+            } else {
+                showMessage(lastErrorMessage || 'Processing failed. Please try again.', 'error');
+            }
+        }
+
+        // Clear selection
+        selectedFile = null;
+        selectedFiles = [];
+        if (fileInput) fileInput.value = '';
+        if (filePreview) filePreview.classList.add('hidden');
+        if (fileName) fileName.textContent = '';
+
         // Reset button
-        convertBtn.disabled = false;
+        convertBtn.disabled = true;
         if (btnText) btnText.hidden = false;
         if (btnLoading) btnLoading.hidden = true;
     });
@@ -367,6 +647,116 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (e) {
                 showMessage('Failed to copy to clipboard', 'error');
             }
+        });
+    }
+
+    // Analyze in RAG Chat
+    // Memory status functions
+    async function updateMemoryStatus(count) {
+        const memoryStatus = document.getElementById('memoryStatus');
+        const memoryCount = document.getElementById('memoryCount');
+        const memoryItemsList = document.getElementById('memoryItemsList');
+        const finishBtn = document.getElementById('finishBtn');
+        
+        if (memoryStatus && memoryCount) {
+            if (count > 0) {
+                memoryStatus.style.display = 'block';
+                memoryCount.textContent = count;
+                
+                // Fetch memory items list
+                try {
+                    const response = await fetch('/api/memory/status');
+                    const data = await response.json();
+                    if (data.items && memoryItemsList) {
+                        memoryItemsList.innerHTML = data.items.map(item => 
+                            `<div style="padding: 0.25rem 0; border-bottom: 1px solid #e2e8f0;">
+                                <span style="font-weight: 600;">${item.filename}</span>
+                                <span style="color: var(--text-light); font-size: 0.8rem;"> (${item.type})</span>
+                            </div>`
+                        ).join('');
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch memory status:', error);
+                }
+                
+                if (finishBtn) finishBtn.style.display = 'block';
+            } else {
+                memoryStatus.style.display = 'none';
+                if (finishBtn) finishBtn.style.display = 'none';
+            }
+        }
+    }
+
+    // Reset memory button
+    const resetMemoryBtn = document.getElementById('resetMemoryBtn');
+    if (resetMemoryBtn) {
+        resetMemoryBtn.addEventListener('click', async () => {
+            if (!confirm('Are you sure you want to clear all memory? This will remove all uploaded files.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/memory/reset', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-Token': window.CSRF_TOKEN,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    updateMemoryStatus(0);
+                    showMessage('Memory cleared', 'success');
+                } else {
+                    showMessage('Failed to clear memory', 'error');
+                }
+            } catch (error) {
+                console.error('Reset memory error:', error);
+                showMessage('Network error', 'error');
+            }
+        });
+    }
+
+    // Finish & Go to RAG button
+    const finishBtn = document.getElementById('finishBtn');
+    if (finishBtn) {
+        finishBtn.addEventListener('click', () => {
+            // Store RAG configuration
+            const ragModelSelect = document.getElementById('ragModelSelect');
+            const ragDomainSelect = document.getElementById('ragDomainSelect');
+            if (ragModelSelect) {
+                localStorage.setItem('ragModel', ragModelSelect.value);
+            }
+            if (ragDomainSelect) {
+                localStorage.setItem('ragDomain', ragDomainSelect.value);
+            }
+            window.location.href = '/rag';
+        });
+    }
+
+    // Load memory status on page load
+    document.addEventListener('DOMContentLoaded', async () => {
+        try {
+            const response = await fetch('/api/memory/status');
+            const data = await response.json();
+            updateMemoryStatus(data.count || 0);
+        } catch (error) {
+            console.error('Failed to load memory status:', error);
+        }
+    });
+
+    const analyzeInRAG = document.getElementById('analyzeInRAG');
+    if (analyzeInRAG) {
+        analyzeInRAG.addEventListener('click', () => {
+            if (!currentMarkdown) {
+                showMessage('No document to analyze. Please convert a document first.', 'error');
+                return;
+            }
+            // Store converted markdown in localStorage
+            localStorage.setItem('convertedDocument', currentMarkdown);
+            localStorage.setItem('documentSource', 'conversion');
+            // Redirect to RAG chat page
+            window.location.href = '/rag';
         });
     }
 
@@ -642,4 +1032,35 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+
+    // Update validation indicator when sanitization options change
+    function updateValidationIndicator() {
+        const removeMacros = document.getElementById('removeMacros')?.checked || false;
+        const stripMetadata = document.getElementById('stripMetadata')?.checked || false;
+        const redactEmails = document.getElementById('redactEmails')?.checked || false;
+        const validationIndicator = document.getElementById('validationIndicator');
+        
+        if (validationIndicator) {
+            if (removeMacros || stripMetadata || redactEmails) {
+                validationIndicator.style.display = 'block';
+            } else {
+                validationIndicator.style.display = 'none';
+            }
+        }
+    }
+
+    // Add event listeners to sanitization checkboxes
+    const removeMacrosCheckbox = document.getElementById('removeMacros');
+    const stripMetadataCheckbox = document.getElementById('stripMetadata');
+    const redactEmailsCheckbox = document.getElementById('redactEmails');
+    
+    if (removeMacrosCheckbox) {
+        removeMacrosCheckbox.addEventListener('change', updateValidationIndicator);
+    }
+    if (stripMetadataCheckbox) {
+        stripMetadataCheckbox.addEventListener('change', updateValidationIndicator);
+    }
+    if (redactEmailsCheckbox) {
+        redactEmailsCheckbox.addEventListener('change', updateValidationIndicator);
+    }
 });

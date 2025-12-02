@@ -14,7 +14,10 @@ from security import (
     security_check, get_client_ip, check_capacity, acquire_conversion_slot,
     release_conversion_slot, get_active_conversions
 )
-from utils import sanitize_filename, markdown_to_text
+from utils import (
+    sanitize_filename, markdown_to_text, remove_macros, 
+    strip_metadata, redact_emails, format_as_json, format_as_xml
+)
 from batch_service import BatchService
 from webhook_service import WebhookService
 from analyzer import analyze_document
@@ -23,6 +26,9 @@ from embedder import (
     generate_embedding, generate_embeddings_batch, embed_chunks,
     export_for_chromadb, export_for_lancedb, export_jsonl, get_embedding_info
 )
+from openrouter_gateway import chat_completion, analyze_image, image_to_text_description
+from memory_store import get_memory_store
+from assistant import ask_assistant
 import threading
 
 logger = logging.getLogger(__name__)
@@ -58,10 +64,11 @@ def after_request(response):
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "style-src 'self' 'unsafe-inline'; "
-        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "connect-src 'self' https://cdn.jsdelivr.net; "
         "img-src 'self' data:; "
-        "font-src 'self'; "
+        "font-src 'self' https://fonts.gstatic.com https://r2cdn.perplexity.ai; "
         "form-action 'self'; "
         "frame-ancestors 'none'; "
         "base-uri 'self'"
@@ -130,14 +137,102 @@ def internal_error(error):
 # ROUTES
 # =============================================================================
 
+@bp.route("/health")
+def health_check():
+    """
+    Health check endpoint for monitoring and load balancers.
+    Returns comprehensive system health status.
+    """
+    from health import get_health_status
+    
+    health_data = get_health_status()
+    status_code = 200 if health_data["status"] == "healthy" else 503
+    
+    return jsonify(health_data), status_code
+
+    
+    health_data = get_health_status()
+    status_code = 200 if health_data["status"] == "healthy" else 503
+    
+    return jsonify(health_data), status_code
+
+
+@bp.before_app_request
+def ab_testing_middleware():
+    """Ensure user has an ID for A/B testing."""
+    if 'user_id' not in session:
+        session['user_id'] = hashlib.sha256(os.urandom(32)).hexdigest()[:16]
+
+
+
+
+
+@bp.route("/api/stats")
+def public_stats():
+    """
+    Public statistics endpoint - no authentication required.
+    Shows system transparency and usage metrics.
+    """
+    from stats import stats
+    
+    return jsonify(stats.get_api_stats())
+
+
+@bp.route("/metrics")
+def metrics():
+    """
+    Prometheus metrics endpoint for monitoring systems.
+    Returns metrics in Prometheus text format.
+    """
+    from metrics import get_metrics
+    
+    metrics_data, content_type = get_metrics()
+    return metrics_data, 200, {'Content-Type': content_type}
+
+
+@bp.route("/stats")
+def stats_page():
+    """Render the public statistics page."""
+    return render_template("stats.html", active_page='stats')
+
+
+@bp.route("/api/spec.json")
+def api_spec():
+    """Serve OpenAPI specification."""
+    from api_spec import generate_api_spec
+    from flask import current_app
+    return jsonify(generate_api_spec(current_app))
+
+
+@bp.route("/api/swagger")
+def swagger_ui():
+    """Render Swagger UI."""
+    return render_template("swagger.html")
+
+
 @bp.route("/")
 def landing():
     """Render the landing page - portfolio showcase."""
-    return render_template("landing.html")
+    from ab_testing import experiments
+    
+    # Example Experiment: New Hero Text
+    # Ensure experiment exists (idempotent)
+    if "hero_text_v2" not in experiments._experiments:
+        experiments.create_experiment(
+            id="hero_text_v2",
+            name="Hero Text Optimization",
+            description="Testing new hero text for better conversion",
+            variants=["control", "variant_a"]
+        )
+    
+    user_id = session.get('user_id', 'unknown')
+    variant = experiments.get_assignment("hero_text_v2", user_id)
+    
+    return render_template("landing.html", experiment_variant=variant)
 
 
 @bp.route("/convert")
-def converter():
+def converter_page():
     """Render the converter upload page with CSRF token."""
     max_size_mb = Config.MAX_CONTENT_LENGTH // (1024 * 1024)
 
@@ -150,14 +245,159 @@ def converter():
         extensions=sorted(Config.ALLOWED_EXTENSIONS),
         max_size_mb=max_size_mb,
         rate_limit=Config.RATE_LIMIT_REQUESTS,
-        csrf_token=session['csrf_token']
+        csrf_token=session['csrf_token'],
+        active_page='convert'
     )
 
 
 @bp.route("/use-cases")
 def use_cases():
     """Render the business use cases page."""
-    return render_template("use_cases.html")
+    return render_template("use_cases.html", active_page='use-cases')
+
+
+@bp.route("/mcp")
+def mcp_docs():
+    """Render the MCP integration documentation page."""
+    return render_template("mcp.html")
+
+
+@bp.route("/contact", methods=["GET"])
+def contact_page():
+    """Render the contact form page."""
+    # Generate CSRF token
+    if 'csrf_token' not in session:
+        session['csrf_token'] = hashlib.sha256(os.urandom(32)).hexdigest()
+    
+    return render_template("contact.html", csrf_token=session['csrf_token'], active_page='contact')
+
+
+@bp.route("/contact", methods=["POST"])
+@security_check
+def submit_contact():
+    """Handle contact form submission and send email via Brevo SMTP."""
+    import smtplib
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    from datetime import datetime
+    
+    request_id = getattr(request, 'request_id', 'UNKNOWN')
+    ip = get_client_ip()
+    
+    # CSRF validation
+    csrf_token = request.form.get('csrf_token') or request.headers.get('X-CSRF-Token')
+    if not csrf_token or csrf_token != session.get('csrf_token'):
+        logger.warning(f"CSRF validation failed on contact form from {ip}", extra={'request_id': request_id})
+        return jsonify({"error": "Invalid request token. Please refresh the page.", "request_id": request_id}), 403
+    
+    # Honeypot check (bot detection)
+    if request.form.get('website'):
+        logger.warning(f"Bot detected on contact form from {ip}", extra={'request_id': request_id})
+        return jsonify({"error": "Invalid request.", "request_id": request_id}), 400
+    
+    # Get form data
+    name = request.form.get('name', '').strip()
+    email = request.form.get('email', '').strip()
+    company = request.form.get('company', '').strip()
+    use_case = request.form.get('use_case', '').strip()
+    message = request.form.get('message', '').strip()
+    
+    # Validation
+    if not name or not email or not use_case:
+        return jsonify({"error": "Please fill in all required fields.", "request_id": request_id}), 400
+    
+    # Basic email validation
+    if '@' not in email or '.' not in email:
+        return jsonify({"error": "Please provide a valid email address.", "request_id": request_id}), 400
+    
+    try:
+        # Try to import email config
+        try:
+            from email_config import CONTACT_EMAIL, SMTP_SERVER, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD, SMTP_SENDER
+            email_configured = (SMTP_PASSWORD and SMTP_PASSWORD != "your-brevo-smtp-key-here")
+        except ImportError:
+            email_configured = False
+            logger.warning("Email configuration not found. Please set up email_config.py")
+        
+        # Prepare email content
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        email_body = f"""
+New API Access Request - MegaDoc
+
+Timestamp: {timestamp}
+Request ID: {request_id}
+IP Address: {ip}
+
+--- Contact Information ---
+Name: {name}
+Email: {email}
+Company: {company or 'Not provided'}
+
+--- Request Details ---
+Use Case: {use_case}
+
+Additional Details:
+{message or 'No additional details provided'}
+
+---
+This is an automated message from the MegaDoc contact form.
+Reply directly to this email to respond to {name}.
+"""
+        
+        if email_configured:
+            try:
+                # Send email via Brevo SMTP
+                msg = MIMEMultipart()
+                msg['From'] = f"MegaDoc Contact Form <{SMTP_SENDER}>"
+                msg['To'] = CONTACT_EMAIL
+                msg['Subject'] = f"MegaDoc API Request - {name}"
+                msg['Reply-To'] = email
+                
+                msg.attach(MIMEText(email_body, 'plain'))
+                
+                # Connect and send
+                with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                    server.starttls()
+                    server.login(SMTP_USERNAME, SMTP_PASSWORD)
+                    server.send_message(msg)
+                
+                logger.info(f"Contact form email sent to {CONTACT_EMAIL} from {email}", extra={'request_id': request_id})
+            except Exception as e:
+                logger.error(f"Failed to send email: {str(e)}", extra={'request_id': request_id})
+                # Fall back to console logging
+                logger.info(f"Contact form submission (email failed):\n{email_body}", extra={'request_id': request_id})
+        else:
+            # Log to console if email not configured
+            logger.info(f"""
+╔══════════════════════════════════════════════════════════════╗
+║              NEW CONTACT FORM SUBMISSION                      ║
+╠══════════════════════════════════════════════════════════════╣
+║ Timestamp: {timestamp}
+║ Request ID: {request_id}
+║ IP Address: {ip}
+║ 
+║ Name: {name}
+║ Email: {email}
+║ Company: {company or 'Not provided'}
+║ Use Case: {use_case}
+║ 
+║ Message:
+║ {message or 'No additional details provided'}
+╚══════════════════════════════════════════════════════════════╝
+            """, extra={'request_id': request_id})
+        
+        return jsonify({
+            "success": True,
+            "message": "Thank you! Your request has been submitted successfully. We'll get back to you soon.",
+            "request_id": request_id
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error processing contact form: {str(e)}", extra={'request_id': request_id})
+        return jsonify({
+            "error": "Failed to submit request. Please try again later.",
+            "request_id": request_id
+        }), 500
 
 
 @bp.route("/convert", methods=["POST"])
@@ -323,7 +563,7 @@ def convert_file():
 
     except Exception as e:
         logger.error(f"Conversion error: {e}", extra={'request_id': request_id})
-        stats.record_error()
+        stats.record_error("conversion", str(e))
         release_conversion_slot()  # Release slot on error
         # Cleanup on error
         try:
@@ -401,8 +641,13 @@ def api_convert():
 
     # Get output format (default to markdown)
     output_format = request.form.get('output_format', 'markdown')
-    if output_format not in ('markdown', 'text'):
+    if output_format not in ('markdown', 'text', 'json', 'xml'):
         output_format = 'markdown'
+    
+    # Get sanitization options
+    remove_macros_flag = request.form.get('remove_macros', 'false').lower() == 'true'
+    strip_metadata_flag = request.form.get('strip_metadata', 'false').lower() == 'true'
+    redact_emails_flag = request.form.get('redact_emails', 'false').lower() == 'true'
 
     # Acquire conversion slot
     if not acquire_conversion_slot():
@@ -413,47 +658,177 @@ def api_convert():
         }), 503
 
     # Set output file extension based on format
-    output_ext = '.txt' if output_format == 'text' else '.md'
+    if output_format == 'text':
+        output_ext = '.txt'
+    elif output_format == 'json':
+        output_ext = '.json'
+    elif output_format == 'xml':
+        output_ext = '.xml'
+    else:
+        output_ext = '.md'
 
     temp_dir = tempfile.mkdtemp()
     temp_input = Path(temp_dir) / filename
+
+    import time
+    start_time = time.time()
+    success = False
+    error_msg = None
 
     try:
         temp_input.write_bytes(file_content)
         logger.info(f"API conversion: {filename} -> {output_format} from {ip} [Active: {get_active_conversions()}/{Config.MAX_CONCURRENT_CONVERSIONS}]", extra={'request_id': request_id})
 
-        # Step 1: Convert to Markdown first
-        markdown_content = converter.convert_to_string(temp_input)
+        # Check if file is an image - use unified multi-modal pipeline
+        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.bmp'}
+        is_image = ext in image_extensions
+        source_type = 'image' if is_image else 'document'
+        
+        if is_image:
+            # Step 1: Convert image to text description using Vision AI
+            import base64
+            import mimetypes
+            
+            # Determine MIME type
+            mime_type = mimetypes.guess_type(filename)[0] or 'image/jpeg'
+            if ext == '.png':
+                mime_type = 'image/png'
+            elif ext == '.gif':
+                mime_type = 'image/gif'
+            elif ext == '.bmp':
+                mime_type = 'image/bmp'
+            
+            # Convert to base64 data URI
+            image_base64 = base64.b64encode(file_content).decode('utf-8')
+            image_data_uri = f"data:{mime_type};base64,{image_base64}"
+            
+            # Generate AI description for RAG indexing
+            logger.info(f"Converting image to text description for RAG indexing: {filename}", extra={'request_id': request_id})
+            try:
+                # image_to_text_description returns a string (the description text)
+                markdown_content = image_to_text_description(image_data_uri)
+                if not markdown_content or not markdown_content.strip():
+                    raise ValueError("AI failed to generate image description")
+                # Keep image_data_uri for memory store (don't store in session - too large!)
+                logger.info(f"Image description generated: {len(markdown_content)} chars", extra={'request_id': request_id})
+            except requests.exceptions.HTTPError as e:
+                # Handle rate limit (429) specially
+                if "Rate limit" in str(e) or (hasattr(e, 'response') and e.response and e.response.status_code == 429):
+                    logger.warning(f"Rate limit hit for image description: {e}", extra={'request_id': request_id})
+                    release_conversion_slot()
+                    return jsonify({
+                        "error": "Queue Full",
+                        "message": "Rate limit exceeded. Please wait a few seconds and try again.",
+                        "retry_after": 3,
+                        "request_id": request_id
+                    }), 429
+                logger.error(f"Image description generation failed: {e}", extra={'request_id': request_id})
+                raise ValueError(f"Failed to generate image description: {str(e)}")
+            except Exception as e:
+                logger.error(f"Image description generation failed: {e}", extra={'request_id': request_id})
+                raise ValueError(f"Failed to generate image description: {str(e)}")
+        else:
+            # Step 1: Convert document to Markdown (traditional path)
+            markdown_content = converter.convert_to_string(temp_input)
 
-        # Step 2: If text format requested, convert markdown to plain text
+        # Step 2: Apply sanitization options (only for documents, images already processed)
+        if not is_image:
+            if remove_macros_flag:
+                markdown_content = remove_macros(markdown_content)
+            if strip_metadata_flag:
+                markdown_content = strip_metadata(markdown_content)
+            if redact_emails_flag:
+                markdown_content = redact_emails(markdown_content)
+
+        # Step 3: Format output based on requested format
         if output_format == 'text':
             final_content = markdown_to_text(markdown_content)
+        elif output_format == 'json':
+            final_content = format_as_json(markdown_content, Path(filename).stem)
+        elif output_format == 'xml':
+            final_content = format_as_xml(markdown_content, Path(filename).stem)
         else:
             final_content = markdown_content
 
         release_conversion_slot()
         stats.record_conversion(ext, len(file_content), ip)
+        success = True
+
+        # Use server-side memory store (not session cookies - avoids 4KB limit)
+        memory_store = get_memory_store()
+        session_id = session.get('user_id')
+        if not session_id:
+            session_id = hashlib.sha256(os.urandom(32)).hexdigest()[:16]
+            session['user_id'] = session_id
+
+        # image_data_uri is already set above for images (local variable, not session)
+        # For non-images, set to None
+        if not is_image:
+            image_data_uri = None
+
+        # Add to server-side memory store
+        memory_store.add_item(
+            session_id=session_id,
+            filename=filename,
+            content=final_content,
+            doc_type=source_type,
+            doc_format=output_format,
+            image_data_uri=image_data_uri
+        )
+
+        # Get current memory count
+        memory_count = memory_store.get_item_count(session_id)
+        logger.info(f"Added to memory: {filename} (Total items: {memory_count})", extra={'request_id': request_id})
 
         return jsonify({
             "success": True,
             "filename": f"{Path(filename).stem}{output_ext}",
             "content": final_content,
             "format": output_format,
+            "source_type": source_type,
+            "memory_count": memory_count,
             "request_id": request_id
         })
 
     except Exception as e:
+        error_msg = str(e)
         logger.error(f"API conversion error: {e}", extra={'request_id': request_id})
         release_conversion_slot()
-        stats.record_error()
+        stats.record_error("api_conversion", error_msg)
         return jsonify({"error": str(e), "request_id": request_id}), 500
 
     finally:
+        # Track analytics
+        try:
+            duration = time.time() - start_time
+            from analytics import analytics
+            from ab_testing import experiments
+            
+            analytics.track_conversion(
+                file_type=ext,
+                size=len(file_content),
+                duration=duration,
+                success=success,
+                error=error_msg
+            )
+            
+            # Track A/B Test Metric (if successful)
+            if success:
+                user_id = session.get('user_id', 'unknown')
+                variant = experiments.get_assignment("hero_text_v2", user_id)
+                experiments.track_metric("hero_text_v2", variant, "conversions")
+                
+        except Exception as e:
+            logger.error(f"Analytics/AB error: {e}")
+
         try:
             temp_input.unlink(missing_ok=True)
             Path(temp_dir).rmdir()
         except Exception:
             pass
+
+
+
 
 
 @bp.route("/api/batch/convert", methods=["POST"])
@@ -478,6 +853,8 @@ def api_batch_convert():
     # For simplicity, we treat it as 1 slot but it consumes more resources.
     if not acquire_conversion_slot():
         return jsonify({"error": "System busy", "request_id": request_id}), 503
+
+
 
     temp_dir = tempfile.mkdtemp()
     temp_input = Path(temp_dir) / filename
@@ -546,7 +923,7 @@ def api_batch_convert():
     except Exception as e:
         logger.error(f"Batch conversion error: {e}", extra={'request_id': request_id})
         release_conversion_slot()
-        stats.record_error()
+        stats.record_error("batch_conversion", str(e))
         shutil.rmtree(temp_dir, ignore_errors=True)
         return jsonify({"error": str(e), "request_id": request_id}), 500
 
@@ -597,53 +974,17 @@ def security_info():
     })
 
 
-@bp.route("/login", methods=["GET", "POST"])
-def login():
-    """Admin login page."""
-    if request.method == "POST":
-        password = request.form.get("password", "")
-        if password == Config.ADMIN_PASSWORD:
-            session['admin_authenticated'] = True
-            logger.info(f"Admin login successful from {get_client_ip()}")
-            return '<script>window.location.href="/admin";</script>'
-        else:
-            logger.warning(f"Failed admin login attempt from {get_client_ip()}")
-            return render_template("login.html", error="Invalid password")
 
-    # Already logged in - redirect to admin
-    if session.get('admin_authenticated'):
-        return '<script>window.location.href="/admin";</script>'
-
-    return render_template("login.html")
-
-
-@bp.route("/logout")
-def logout():
-    """Admin logout."""
-    session.pop('admin_authenticated', None)
-    return '<script>window.location.href="/";</script>'
-
-
-@bp.route("/admin")
-def admin_dashboard():
-    """Admin dashboard with statistics (requires login)."""
-    if not session.get('admin_authenticated'):
-        return '<script>window.location.href="/login";</script>'
-    return render_template("admin.html", stats=stats.get_summary())
 
 
 @bp.route("/api/docs")
 def api_docs():
     """API documentation page."""
     base_url = request.url_root.rstrip('/')
-    return render_template("api-docs.html", base_url=base_url)
+    return render_template("api-docs.html", base_url=base_url, active_page='api')
 
 
-@bp.route("/api/stats")
-def api_stats():
-    """Public API statistics endpoint."""
-    return jsonify(stats.get_api_stats())
-
+# Note: /api/stats route is defined earlier at public_stats()
 
 @bp.route("/api/formats")
 def api_formats():
@@ -748,7 +1089,7 @@ def api_analyze():
 
     except Exception as e:
         logger.error(f"Analysis error: {e}", extra={'request_id': request_id})
-        stats.record_error()
+        stats.record_error("analysis", str(e))
         return jsonify({"error": "Analysis failed", "request_id": request_id}), 500
 
 
@@ -833,8 +1174,13 @@ def api_chunk():
 
         chunk_size = int(params.get('chunk_size', 512))
         chunk_overlap = int(params.get('chunk_overlap', 50))
-        strategy = params.get('strategy', 'token')
-        preserve_headers = params.get('preserve_headers', 'false').lower() == 'true'
+        strategy = params.get('strategy', 'character')  # Default to character to avoid tiktoken hang
+        # Handle both boolean and string values for preserve_headers
+        preserve_headers_val = params.get('preserve_headers', False)
+        if isinstance(preserve_headers_val, bool):
+            preserve_headers = preserve_headers_val
+        else:
+            preserve_headers = str(preserve_headers_val).lower() == 'true'
         export_format = params.get('export_format', 'full')
 
         # Validate parameters
@@ -876,7 +1222,7 @@ def api_chunk():
 
     except Exception as e:
         logger.error(f"Chunking error: {e}", extra={'request_id': request_id})
-        stats.record_error()
+        stats.record_error("chunking", str(e))
         return jsonify({"error": "Chunking failed", "request_id": request_id}), 500
 
 
@@ -922,101 +1268,73 @@ def api_token_count():
         return jsonify({"error": "Token counting failed", "request_id": request_id}), 500
 
 
-@bp.route("/compare")
-def compare_page():
-    """Render document comparison page."""
-    if 'csrf_token' not in session:
-        session['csrf_token'] = hashlib.sha256(os.urandom(32)).hexdigest()
-    return render_template("compare.html", csrf_token=session['csrf_token'])
-
-
 @bp.route("/rag")
 def rag_page():
     """Render RAG pipeline page."""
     if 'csrf_token' not in session:
         session['csrf_token'] = hashlib.sha256(os.urandom(32)).hexdigest()
-    return render_template("rag.html", csrf_token=session['csrf_token'], active_page='rag')
+
+    # Get memory count from server-side store
+    memory_store = get_memory_store()
+    session_id = session.get('user_id', '')
+    memory_count = memory_store.get_item_count(session_id) if session_id else 0
+
+    return render_template("rag.html", csrf_token=session['csrf_token'], active_page='rag', memory_count=memory_count)
 
 
-@bp.route("/api/compare", methods=["POST"])
+@bp.route("/api/memory/reset", methods=["POST"])
 @security_check
-def api_compare():
-    """
-    Compare two markdown documents and return diff.
-
-    Expects JSON body with:
-    - original: Original markdown content
-    - modified: Modified markdown content
-
-    Returns:
-    - diff: Array of line objects with type (added/removed/unchanged) and text
-    - stats: Counts of additions, deletions, unchanged lines
-    """
+def reset_memory():
+    """Reset session memory (clear all injected data)."""
     request_id = getattr(request, 'request_id', 'UNKNOWN')
-    ip = get_client_ip()
 
-    try:
-        if not request.is_json:
-            return jsonify({"error": "JSON body required", "request_id": request_id}), 400
+    # Clear server-side memory store
+    memory_store = get_memory_store()
+    session_id = session.get('user_id', '')
+    if session_id:
+        memory_store.clear_session(session_id)
 
-        original = request.json.get('original', '')
-        modified = request.json.get('modified', '')
+    logger.info(f"Memory reset by user", extra={'request_id': request_id})
+    return jsonify({
+        "success": True,
+        "message": "Memory cleared",
+        "request_id": request_id
+    })
 
-        if not original or not modified:
-            return jsonify({"error": "Both original and modified content required", "request_id": request_id}), 400
 
-        # Use difflib to compare
-        import difflib
+@bp.route("/api/memory/status", methods=["GET"])
+def memory_status():
+    """Get current memory status."""
+    memory_store = get_memory_store()
+    session_id = session.get('user_id', '')
 
-        original_lines = original.splitlines()
-        modified_lines = modified.splitlines()
+    if not session_id:
+        return jsonify({"count": 0, "items": []})
 
-        differ = difflib.Differ()
-        diff_result = list(differ.compare(original_lines, modified_lines))
+    items = memory_store.get_items(session_id)
+    return jsonify({
+        "count": len(items),
+        "items": [
+            {
+                "filename": item.get('filename', 'Unknown'),
+                "type": item.get('type', 'unknown'),
+                "format": item.get('format', 'markdown')
+            }
+            for item in items
+        ]
+    })
 
-        # Process diff into structured format
-        diff = []
-        additions = 0
-        deletions = 0
-        unchanged = 0
 
-        for line in diff_result:
-            if line.startswith('  '):  # Unchanged
-                diff.append({"type": "unchanged", "text": line[2:]})
-                unchanged += 1
-            elif line.startswith('- '):  # Removed
-                diff.append({"type": "removed", "text": line[2:]})
-                deletions += 1
-            elif line.startswith('+ '):  # Added
-                diff.append({"type": "added", "text": line[2:]})
-                additions += 1
-            # Skip '? ' lines (diff markers)
-
-        # Record stats
-        stats.record_compare(ip)
-        logger.info(f"Document comparison from {ip}", extra={'request_id': request_id})
-
-        return jsonify({
-            "success": True,
-            "diff": diff,
-            "stats": {
-                "additions": additions,
-                "deletions": deletions,
-                "unchanged": unchanged
-            },
-            "request_id": request_id
-        })
-
-    except Exception as e:
-        logger.error(f"Comparison error: {e}", extra={'request_id': request_id})
-        stats.record_error()
-        return jsonify({"error": "Comparison failed", "request_id": request_id}), 500
+@bp.route("/methodology")
+def methodology_page():
+    """Render methodology/engineering leadership page."""
+    return render_template("methodology.html", active_page='methodology')
 
 
 @bp.route("/architecture")
 def architecture_page():
     """Render architecture/technology showcase page."""
-    return render_template("architecture.html")
+    return render_template("architecture.html", active_page='architecture')
 
 
 # =============================================================================
@@ -1082,7 +1400,7 @@ def api_export_jsonl():
 
     except Exception as e:
         logger.error(f"JSONL export error: {e}", extra={'request_id': request_id})
-        stats.record_error()
+        stats.record_error("jsonl_export", str(e))
         return jsonify({"error": "Export failed", "request_id": request_id}), 500
 
 
@@ -1111,7 +1429,21 @@ def api_embed():
 
         # Single text
         if 'text' in data:
+            import time
+            from model_metrics import model_metrics
+            
+            start_time = time.time()
             result = generate_embedding(data['text'])
+            duration = time.time() - start_time
+            
+            model_metrics.track_operation(
+                operation='embedding',
+                model='all-MiniLM-L6-v2',
+                input_size=len(data['text']),
+                output_size=1,
+                duration=duration
+            )
+            
             stats.record_analyze(ip)
             return jsonify({
                 "success": True,
@@ -1128,7 +1460,22 @@ def api_embed():
             if len(texts) > 100:
                 return jsonify({"error": "Maximum 100 texts per request", "request_id": request_id}), 400
 
+            import time
+            from model_metrics import model_metrics
+            
+            start_time = time.time()
             results = generate_embeddings_batch(texts)
+            duration = time.time() - start_time
+            
+            total_chars = sum(len(t) for t in texts)
+            model_metrics.track_operation(
+                operation='embedding_batch',
+                model='all-MiniLM-L6-v2',
+                input_size=total_chars,
+                output_size=len(results),
+                duration=duration
+            )
+
             stats.record_analyze(ip)
             return jsonify({
                 "success": True,
@@ -1146,7 +1493,22 @@ def api_embed():
             if len(chunks) > 100:
                 return jsonify({"error": "Maximum 100 chunks per request", "request_id": request_id}), 400
 
+            import time
+            from model_metrics import model_metrics
+            
+            start_time = time.time()
             results = embed_chunks(chunks, include_text=True)
+            duration = time.time() - start_time
+            
+            total_chars = sum(len(c.get('text', '')) for c in chunks)
+            model_metrics.track_operation(
+                operation='embedding_chunks',
+                model='all-MiniLM-L6-v2',
+                input_size=total_chars,
+                output_size=len(results),
+                duration=duration
+            )
+
             stats.record_analyze(ip)
             return jsonify({
                 "success": True,
@@ -1163,7 +1525,7 @@ def api_embed():
 
     except Exception as e:
         logger.error(f"Embedding error: {e}", extra={'request_id': request_id})
-        stats.record_error()
+        stats.record_error("embedding", str(e))
         return jsonify({"error": "Embedding generation failed", "request_id": request_id}), 500
 
 
@@ -1245,7 +1607,7 @@ def api_export_vectordb():
 
     except Exception as e:
         logger.error(f"VectorDB export error: {e}", extra={'request_id': request_id})
-        stats.record_error()
+        stats.record_error("vectordb_export", str(e))
         return jsonify({"error": "Export failed", "request_id": request_id}), 500
 
 
@@ -1319,14 +1681,16 @@ def api_full_pipeline():
         else:
             params = request.form
 
-        output_format = params.get('output_format', 'jsonl').lower()
+        output_format = params.get('export_format', params.get('output_format', 'jsonl')).lower()
         include_analysis = str(params.get('include_analysis', 'false')).lower() == 'true'
         chunk_size = int(params.get('chunk_size', 512))
-        chunk_overlap = int(params.get('chunk_overlap', 50))
+        chunk_overlap = int(params.get('overlap', params.get('chunk_overlap', 50)))
+        chunking_strategy = params.get('chunking_strategy', 'recursive_character')
+        embedding_model = params.get('embedding_model', 'all-MiniLM-L6-v2')
         collection_name = params.get('collection_name', 'documents')
 
         # Step 1: Chunk
-        chunk_result = chunk_document(markdown_content, chunk_size, chunk_overlap)
+        chunk_result = chunk_document(markdown_content, chunk_size, chunk_overlap, chunking_strategy)
         if "error" in chunk_result:
             return jsonify({"error": chunk_result["error"], "request_id": request_id}), 400
 
@@ -1336,6 +1700,19 @@ def api_full_pipeline():
         analysis = None
         if include_analysis:
             analysis = analyze_document(markdown_content)
+
+        # Step 2: Generate embeddings for chunks
+        chunk_texts = [c.get('text', '') for c in chunks]
+        embeddings_result = generate_embeddings_batch(chunk_texts, embedding_model)
+        
+        # Add embeddings to chunks
+        for i, chunk in enumerate(chunks):
+            if i < len(embeddings_result):
+                chunk['embedding'] = embeddings_result[i]['embedding']
+                chunk['embedding_info'] = {
+                    'model': embeddings_result[i]['model'],
+                    'dimensions': embeddings_result[i]['dimensions']
+                }
 
         # Step 3: Export with embeddings
         if output_format == 'chromadb':
@@ -1377,168 +1754,213 @@ def api_full_pipeline():
 
     except Exception as e:
         logger.error(f"Pipeline error: {e}", extra={'request_id': request_id})
-        stats.record_error()
+        stats.record_error("pipeline", str(e))
         return jsonify({"error": "Pipeline processing failed", "request_id": request_id}), 500
 
 
-@bp.route("/contact")
-def contact_page():
-    """Render contact form for API access requests."""
-    if 'csrf_token' not in session:
-        session['csrf_token'] = hashlib.sha256(os.urandom(32)).hexdigest()
-    return render_template("contact.html", csrf_token=session['csrf_token'])
-
-
-@bp.route("/contact", methods=["POST"])
+@bp.route("/api/retrieve", methods=["POST"])
 @security_check
-def contact_submit():
-    """Handle contact form submission."""
+def api_retrieve():
+    """
+    Retrieve similar chunks based on query using cosine similarity.
+    
+    Accepts:
+    - query: Search query text
+    - chunks: List of chunk objects with text and optional embeddings
+    - embeddings: Optional list of embeddings (if not in chunks)
+    - model: Embedding model name (for query embedding)
+    - top_k: Number of results to return (default: 3)
+    
+    Returns:
+    - results: List of top_k chunks with similarity scores
+    """
     request_id = getattr(request, 'request_id', 'UNKNOWN')
     ip = get_client_ip()
-
-    # CSRF validation
-    csrf_token = request.form.get('csrf_token') or request.headers.get('X-CSRF-Token')
-    if not csrf_token or csrf_token != session.get('csrf_token'):
-        return jsonify({"error": "Invalid request token. Please refresh the page."}), 403
-
-    # Honeypot check
-    if request.form.get('website'):
-        logger.warning(f"Contact honeypot triggered from {ip}", extra={'request_id': request_id})
-        return jsonify({"error": "Invalid request"}), 400
-
-    # Get form data
-    name = request.form.get('name', '').strip()
-    email = request.form.get('email', '').strip()
-    company = request.form.get('company', '').strip()
-    use_case = request.form.get('use_case', '').strip()
-    message = request.form.get('message', '').strip()
-
-    # Validation
-    if not name or len(name) < 2:
-        return jsonify({"error": "Please provide your name"}), 400
-    if not email or '@' not in email:
-        return jsonify({"error": "Please provide a valid email"}), 400
-    if not use_case:
-        return jsonify({"error": "Please select a use case"}), 400
-
-    # Sanitize inputs (basic)
-    name = name[:100]
-    email = email[:100]
-    company = company[:100] if company else ""
-    use_case = use_case[:50]
-    message = message[:1000] if message else ""
-
-    # Record in database
+    
     try:
-        stats.record_contact_request(name, email, company, use_case, message)
-        logger.info(f"Contact request from {email} ({use_case})", extra={'request_id': request_id})
+        if not request.is_json:
+            return jsonify({"error": "JSON body required", "request_id": request_id}), 400
+        
+        data = request.json
+        query = data.get('query', '').strip()
+        if not query:
+            return jsonify({"error": "Query is required", "request_id": request_id}), 400
+        
+        chunks = data.get('chunks', [])
+        embeddings = data.get('embeddings', [])
+        model_name = data.get('model', 'all-MiniLM-L6-v2')
+        top_k = int(data.get('top_k', 3))
+        
+        # Generate query embedding
+        query_embedding_result = generate_embedding(query, model_name)
+        query_embedding = query_embedding_result['embedding']
+        
+        # Get chunk embeddings
+        chunk_embeddings = []
+        chunk_texts = []
+        
+        for i, chunk in enumerate(chunks):
+            if isinstance(chunk, dict):
+                # Try to get embedding from chunk
+                chunk_emb = chunk.get('embedding') or (embeddings[i] if i < len(embeddings) else None)
+                chunk_text = chunk.get('text', '')
+            else:
+                chunk_emb = embeddings[i] if i < len(embeddings) else None
+                chunk_text = str(chunk)
+            
+            if chunk_emb:
+                chunk_embeddings.append(chunk_emb)
+                chunk_texts.append(chunk_text)
+        
+        if not chunk_embeddings:
+            return jsonify({"error": "No embeddings found in chunks", "request_id": request_id}), 400
+        
+        # Calculate cosine similarity
+        import math
+        similarities = []
+        for i, chunk_emb in enumerate(chunk_embeddings):
+            # Cosine similarity
+            dot_product = sum(a * b for a, b in zip(query_embedding, chunk_emb))
+            magnitude_a = math.sqrt(sum(a * a for a in query_embedding))
+            magnitude_b = math.sqrt(sum(b * b for b in chunk_emb))
+            
+            if magnitude_a > 0 and magnitude_b > 0:
+                similarity = dot_product / (magnitude_a * magnitude_b)
+            else:
+                similarity = 0.0
+            
+            similarities.append({
+                'index': i,
+                'text': chunk_texts[i],
+                'score': similarity
+            })
+        
+        # Sort by similarity (descending)
+        similarities.sort(key=lambda x: x['score'], reverse=True)
+        
+        # Return top_k results
+        results = similarities[:top_k]
+        
+        logger.info(f"Retrieval query from {ip} ({len(results)} results)", extra={'request_id': request_id})
+        
         return jsonify({
             "success": True,
-            "message": "Thank you! Your request has been submitted. We'll contact you soon."
+            "query": query,
+            "results": results,
+            "total_chunks": len(chunk_embeddings),
+            "request_id": request_id
         })
+        
     except Exception as e:
-        logger.error(f"Failed to save contact request: {e}", extra={'request_id': request_id})
-        return jsonify({"error": "Failed to submit request. Please try again."}), 500
+        logger.error(f"Retrieval error: {e}", extra={'request_id': request_id})
+        return jsonify({"error": "Retrieval failed", "request_id": request_id}), 500
 
 
-# =============================================================================
-# API KEY MANAGEMENT (Admin)
-# =============================================================================
-
-def admin_required(f):
-    """Require admin authentication for protected routes."""
-    from functools import wraps
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not session.get('admin_authenticated'):
-            return jsonify({"error": "Admin authentication required"}), 401
-        return f(*args, **kwargs)
-    return decorated_function
-
-
-@bp.route("/admin/api-keys")
-@admin_required
-def admin_api_keys():
-    """List all API keys."""
-    from api_keys import api_keys
-    keys = api_keys.list_keys()
-    return jsonify({"keys": keys})
-
-
-@bp.route("/admin/api-keys/generate", methods=["POST"])
-@admin_required
-def admin_generate_api_key():
-    """Generate a new API key."""
-    from api_keys import api_keys
+@bp.route("/api/chat", methods=["POST"])
+@security_check
+def api_chat():
+    """
+    Chat completion endpoint using OpenRouter Gateway.
+    
+    Accepts:
+    - model: UI model name (e.g., "Google Gemini 2.0 Flash")
+    - messages: List of message objects with "role" and "content"
+    - context: Optional context text for RAG
+    
+    Returns:
+    - response: AI response text
+    - latency_ms: Request latency in milliseconds
+    - cost: Estimated cost (always 0.00 for free tier)
+    - model: Model name used
+    """
     request_id = getattr(request, 'request_id', 'UNKNOWN')
-
-    data = request.get_json() or request.form
-    name = data.get('name', '').strip()
-    email = data.get('email', '').strip()
-    rate_limit = int(data.get('rate_limit', 100))
-
-    if not name or not email:
-        return jsonify({"error": "Name and email are required"}), 400
-
-    if rate_limit < 1 or rate_limit > 10000:
-        return jsonify({"error": "Rate limit must be between 1 and 10000"}), 400
-
+    ip = get_client_ip()
+    
     try:
-        raw_key = api_keys.generate_key(name, email, rate_limit)
-        logger.info(f"API key generated for {email}", extra={'request_id': request_id})
-        return jsonify({
-            "success": True,
-            "api_key": raw_key,
-            "name": name,
-            "email": email,
-            "rate_limit": rate_limit,
-            "message": "Save this key securely - it won't be shown again!"
-        })
+        if not request.is_json:
+            return jsonify({"error": "JSON body required", "request_id": request_id}), 400
+        
+        data = request.json
+        model = data.get('model', 'Google Gemini 2.0 Flash')
+        messages = data.get('messages', [])
+        context = data.get('context', '')
+
+        # Get memory from server-side store
+        memory_store = get_memory_store()
+        session_id = session.get('user_id', '')
+
+        # Check if memory exists and is not empty
+        if not session_id or memory_store.get_item_count(session_id) == 0:
+            logger.warning(f"Chat request with empty memory from {ip}", extra={'request_id': request_id})
+            return jsonify({
+                "error": "Memory Empty",
+                "message": "No data has been injected. Please upload files first.",
+                "request_id": request_id
+            }), 400
+
+        # Get combined context from memory store
+        if not context:  # Only use memory if no explicit context provided
+            context = memory_store.get_combined_content(session_id)
+        
+        if not messages:
+            return jsonify({"error": "Messages array required", "request_id": request_id}), 400
+        
+        # Validate messages format
+        for msg in messages:
+            if not isinstance(msg, dict) or 'role' not in msg or 'content' not in msg:
+                return jsonify({"error": "Invalid message format. Each message must have 'role' and 'content'", "request_id": request_id}), 400
+        
+        # Call OpenRouter gateway
+        try:
+            # Get domain from request (default to general)
+            domain = request.json.get('domain', 'general')
+            result = chat_completion(model=model, messages=messages, context=context, domain=domain)
+            
+            # Check for rate limit error
+            if "error" in result and result.get("error") == "Queue Full":
+                retry_after = result.get("retry_after", 3)
+                logger.warning(f"Rate limit hit for {ip}", extra={'request_id': request_id})
+                return jsonify({
+                    "error": "Queue Full",
+                    "retry_after": retry_after,
+                    "request_id": request_id
+                }), 429
+            
+            # Success response
+            logger.info(f"Chat completion from {ip} using {model}", extra={'request_id': request_id})
+            return jsonify({
+                "success": True,
+                "response": result.get("response", ""),
+                "latency_ms": result.get("latency_ms", 0),
+                "cost": result.get("cost", 0.0),
+                "model": result.get("model", model),
+                "request_id": request_id
+            })
+            
+        except ValueError as e:
+            # API key missing
+            logger.error(f"OpenRouter configuration error: {e}", extra={'request_id': request_id})
+            return jsonify({
+                "error": "OpenRouter API not configured",
+                "request_id": request_id
+            }), 503
+        except requests.exceptions.RequestException as e:
+            # HTTP errors from OpenRouter
+            logger.error(f"OpenRouter HTTP error: {e}", extra={'request_id': request_id})
+            return jsonify({
+                "error": "Inference service unavailable",
+                "request_id": request_id
+            }), 502
+        except Exception as e:
+            logger.error(f"OpenRouter error: {e}", extra={'request_id': request_id})
+            return jsonify({
+                "error": "Chat completion failed",
+                "request_id": request_id
+            }), 500
+            
     except Exception as e:
-        logger.error(f"Failed to generate API key: {e}", extra={'request_id': request_id})
-        return jsonify({"error": "Failed to generate API key"}), 500
-
-
-@bp.route("/admin/api-keys/<int:key_id>/deactivate", methods=["POST"])
-@admin_required
-def admin_deactivate_key(key_id):
-    """Deactivate an API key."""
-    from api_keys import api_keys
-    try:
-        api_keys.deactivate_key(key_id)
-        return jsonify({"success": True, "message": "API key deactivated"})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@bp.route("/admin/api-keys/<int:key_id>/activate", methods=["POST"])
-@admin_required
-def admin_activate_key(key_id):
-    """Reactivate an API key."""
-    from api_keys import api_keys
-    try:
-        api_keys.activate_key(key_id)
-        return jsonify({"success": True, "message": "API key activated"})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@bp.route("/admin/api-keys/<int:key_id>/rate-limit", methods=["POST"])
-@admin_required
-def admin_update_rate_limit(key_id):
-    """Update rate limit for an API key."""
-    from api_keys import api_keys
-    data = request.get_json() or request.form
-    new_limit = int(data.get('rate_limit', 100))
-
-    if new_limit < 1 or new_limit > 10000:
-        return jsonify({"error": "Rate limit must be between 1 and 10000"}), 400
-
-    try:
-        api_keys.update_rate_limit(key_id, new_limit)
-        return jsonify({"success": True, "message": f"Rate limit updated to {new_limit}"})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Chat endpoint error: {e}", extra={'request_id': request_id})
+        return jsonify({"error": "Internal server error", "request_id": request_id}), 500
 
 
 @bp.route("/api/key/validate")
@@ -1567,3 +1989,167 @@ def validate_api_key_endpoint():
         "valid": False,
         "error": "Invalid or inactive API key"
     }), 401
+
+
+@bp.route("/vision")
+def vision_page():
+    """Vision defect analysis page for industrial maintenance."""
+    return render_template("vision.html", active_page="vision")
+
+
+@bp.route("/api/analyze-image", methods=["POST"])
+@security_check
+def api_analyze_image():
+    """
+    Analyze image for industrial defects using vision AI.
+    
+    Accepts:
+    - image: Base64-encoded image (data URI format)
+    - context: Optional equipment context (e.g., "Packaging Line A")
+    
+    Returns:
+    - analysis: Structured JSON with defect information
+    - latency_ms: Request latency
+    """
+    request_id = getattr(request, 'request_id', 'UNKNOWN')
+    ip = get_client_ip()
+    
+    try:
+        if not request.is_json:
+            return jsonify({"error": "JSON body required", "request_id": request_id}), 400
+        
+        data = request.json
+        image_base64 = data.get('image')
+        context = data.get('context', '')
+        
+        if not image_base64:
+            return jsonify({"error": "Image data required", "request_id": request_id}), 400
+        
+        # Validate base64 image format
+        if not image_base64.startswith('data:image/'):
+            return jsonify({"error": "Invalid image format. Expected data URI.", "request_id": request_id}), 400
+        
+        # Call vision analysis
+        try:
+            result = analyze_image(image_base64=image_base64, context=context)
+            
+            # Check for rate limit error
+            if "error" in result and result.get("error") == "Queue Full":
+                retry_after = result.get("retry_after", 3)
+                logger.warning(f"Vision rate limit hit for {ip}", extra={'request_id': request_id})
+                return jsonify({
+                    "error": "System Busy",
+                    "message": "Retrying...",
+                    "retry_after": retry_after,
+                    "request_id": request_id
+                }), 429
+            
+            # Success response
+            logger.info(f"Vision analysis from {ip} for context: {context}", extra={'request_id': request_id})
+            return jsonify({
+                "success": True,
+                "analysis": result.get("analysis", {}),
+                "latency_ms": result.get("latency_ms", 0),
+                "model": result.get("model", "google/gemini-2.0-flash-exp:free"),
+                "request_id": request_id
+            })
+            
+        except ValueError as e:
+            # API key missing
+            logger.error(f"Vision configuration error: {e}", extra={'request_id': request_id})
+            return jsonify({
+                "error": "Vision service not configured",
+                "request_id": request_id
+            }), 503
+        except requests.exceptions.RequestException as e:
+            # HTTP errors from OpenRouter
+            logger.error(f"Vision service error: {e}", extra={'request_id': request_id})
+            return jsonify({
+                "error": "Vision service unavailable",
+                "message": "Please try again in a moment",
+                "request_id": request_id
+            }), 502
+        except Exception as e:
+            logger.error(f"Vision analysis error: {e}", extra={'request_id': request_id})
+            return jsonify({
+                "error": "Image analysis failed",
+                "request_id": request_id
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Vision endpoint error: {e}", extra={'request_id': request_id})
+        return jsonify({"error": "Internal server error", "request_id": request_id}), 500
+
+
+# =============================================================================
+# MEGADOC ASSISTANT ENDPOINT
+# =============================================================================
+
+@bp.route("/api/assistant", methods=["POST"])
+@security_check
+def api_assistant():
+    """
+    MegaDoc Assistant - RAG chatbot with live stats access
+
+    POST /api/assistant
+    Content-Type: application/json
+
+    Request body:
+    {
+        "question": "How many documents have been processed?",
+        "model": "meta-llama/llama-3.2-3b-instruct:free"  // optional
+    }
+
+    Response:
+    {
+        "answer": "Based on the live statistics...",
+        "model": "meta-llama/llama-3.2-3b-instruct:free",
+        "stats_included": true,
+        "request_id": "abc123"
+    }
+    """
+    request_id = getattr(request, 'request_id', 'UNKNOWN')
+    logger.info(f"Assistant request from {request.remote_addr}", extra={'request_id': request_id})
+
+    try:
+        data = request.get_json() or {}
+        question = data.get("question", "").strip()
+
+        if not question:
+            return jsonify({
+                "error": "Question is required",
+                "request_id": request_id
+            }), 400
+
+        if len(question) > 500:
+            return jsonify({
+                "error": "Question too long (max 500 characters)",
+                "request_id": request_id
+            }), 400
+
+        model = data.get("model")  # Optional model override
+
+        result = ask_assistant(question, model=model)
+
+        if "error" in result:
+            logger.warning(f"Assistant error: {result['error']}", extra={'request_id': request_id})
+            return jsonify({
+                "error": result["error"],
+                "request_id": request_id
+            }), 503
+
+        logger.info(f"Assistant response generated", extra={'request_id': request_id})
+        return jsonify({
+            "answer": result.get("answer", ""),
+            "model": result.get("model", "unknown"),
+            "stats_included": result.get("stats_included", False),
+            "tokens_used": result.get("tokens_used", {}),
+            "request_id": request_id
+        })
+
+    except Exception as e:
+        logger.error(f"Assistant endpoint error: {e}", extra={'request_id': request_id})
+        return jsonify({
+            "error": "Internal server error",
+            "request_id": request_id
+        }), 500

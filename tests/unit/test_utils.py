@@ -198,7 +198,7 @@ class TestRemoveMacros:
 
     def test_preserves_normal_content(self):
         """Normal content should be preserved."""
-        content = "This is normal document text without macros."
+        content = "This is normal document text with regular content."
         result = remove_macros(content)
 
         assert result == content

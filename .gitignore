@@ -14,6 +14,12 @@ ENV/
 env/
 .venv/
 
+# Environment variables (contains secrets!)
+.env
+.env.local
+.env.production
+*.local
+
 # IDE
 .idea/
 .vscode/
@@ -21,15 +27,15 @@ env/
 *.swo
 *~
 
-# Environment
-.env
-.env.local
-*.local
-
 # Temp files
 temp/
 tmp/
 *.tmp
+nul
+
+# Test artifacts (curl outputs)
+cookies*.txt
+contact*.html
 
 # OS
 .DS_Store
@@ -37,3 +43,41 @@ Thumbs.db
 
 # Logs
 *.log
+logs/
+
+# Test coverage
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+
+# Data files (contain local stats, user data)
+data/*.db
+data/*.json
+*.db
+
+# Claude Code local settings
+.claude/
+
+# Development workflow artifacts
+projectplan.md
+task.md
+.agent/
+implementation_plan.md
+walkthrough.md
+docs/README-internal.md
+
+# Contact form submissions (contains user data)
+contact_submissions.json
+
+# Terraform state (contains infrastructure secrets)
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+
+# Secrets
+*.pem
+*.key
+credentials.json
+service-account*.json

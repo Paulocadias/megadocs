@@ -59,6 +59,8 @@ def _init_db():
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS errors (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                error_type TEXT,
+                error_message TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
@@ -158,6 +160,13 @@ def _init_db():
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_conversions_type ON conversions(file_type)')
         cursor.execute('CREATE INDEX IF NOT EXISTS idx_security_created ON security_events(created_at)')
 
+        # Migration: Add error_type and error_message columns if they don't exist
+        try:
+            cursor.execute('SELECT error_type FROM errors LIMIT 1')
+        except sqlite3.OperationalError:
+            cursor.execute('ALTER TABLE errors ADD COLUMN error_type TEXT')
+            cursor.execute('ALTER TABLE errors ADD COLUMN error_message TEXT')
+
 
 # Initialize database on module load
 _init_db()
@@ -179,11 +188,22 @@ class Statistics:
                     (file_type, file_size, ip_hash)
                 )
 
-    def record_error(self):
-        """Record a conversion error."""
+    def record_error(self, error_type: str = "unknown", error_message: str = None):
+        """Record a conversion error with details.
+
+        Args:
+            error_type: Category of error (e.g., 'conversion', 'analysis', 'chunking')
+            error_message: Detailed error message (truncated to 500 chars)
+        """
+        # Truncate message to prevent DB bloat
+        if error_message and len(error_message) > 500:
+            error_message = error_message[:497] + "..."
         with _lock:
             with _db_connection() as conn:
-                conn.execute('INSERT INTO errors DEFAULT VALUES')
+                conn.execute(
+                    'INSERT INTO errors (error_type, error_message) VALUES (?, ?)',
+                    (error_type, error_message)
+                )
 
     def record_rate_limit(self, ip: str):
         """Record a rate limit hit."""
@@ -383,6 +403,34 @@ class Statistics:
             except Exception:
                 compare_count = 0
 
+            # Recent errors with details
+            try:
+                error_rows = cursor.execute('''
+                    SELECT id, error_type, error_message, created_at
+                    FROM errors
+                    ORDER BY id DESC LIMIT 10
+                ''').fetchall()
+                recent_errors = [
+                    {
+                        "id": e['id'],
+                        "type": e['error_type'] or "unknown",
+                        "message": e['error_message'],
+                        "timestamp": e['created_at']
+                    }
+                    for e in error_rows
+                ]
+                # Errors by type
+                error_type_rows = cursor.execute('''
+                    SELECT COALESCE(error_type, 'unknown') as etype, COUNT(*) as cnt
+                    FROM errors
+                    GROUP BY error_type
+                    ORDER BY cnt DESC
+                ''').fetchall()
+                errors_by_type = {row['etype']: row['cnt'] for row in error_type_rows}
+            except Exception:
+                recent_errors = []
+                errors_by_type = {}
+
             return {
                 "total_conversions": total,
                 "today_conversions": today_count,
@@ -405,19 +453,34 @@ class Statistics:
                 "analyze_requests": analyze_count,
                 "chunk_requests": chunk_count,
                 "total_chunks_generated": total_chunks,
-                "compare_requests": compare_count
+                "compare_requests": compare_count,
+                "recent_errors": recent_errors,
+                "errors_by_type": errors_by_type
             }
 
     def get_api_stats(self):
         """Get API-friendly statistics."""
         summary = self.get_summary()
+        
+        # Calculate uptime in seconds
+        uptime_seconds = 0
+        if summary["uptime_since"]:
+            try:
+                start_time = datetime.fromisoformat(summary["uptime_since"])
+                uptime_delta = datetime.now() - start_time
+                uptime_seconds = int(uptime_delta.total_seconds())
+            except (ValueError, TypeError):
+                uptime_seconds = 0
+        
         return {
+            "success": True,
             "status": "operational",
             "statistics": {
                 "conversions": {
                     "total": summary["total_conversions"],
                     "today": summary["today_conversions"],
-                    "this_week": summary["week_conversions"]
+                    "this_week": summary["week_conversions"],
+                    "conversions_by_day": summary["conversions_by_day"]
                 },
                 "data_processed": {
                     "formatted": summary["total_data_processed"],
@@ -429,6 +492,7 @@ class Statistics:
                 "reliability": {
                     "errors": summary["errors"],
                     "error_rate": summary["error_rate"],
+                    "errors_by_type": summary.get("errors_by_type", {}),
                     "rate_limits": summary["rate_limit_hits"],
                     "blocked": summary["blocked_requests"],
                     "capacity_exceeded": summary["capacity_exceeded"]
@@ -439,10 +503,14 @@ class Statistics:
                     "chunk_requests": summary.get("chunk_requests", 0),
                     "total_chunks_generated": summary.get("total_chunks_generated", 0),
                     "compare_requests": summary.get("compare_requests", 0)
-                }
+                },
+                "contact_requests": summary.get("contact_requests", 0)
             },
             "last_conversion": summary["last_conversion"],
-            "service_started": summary["uptime_since"]
+            "service_started": summary["uptime_since"],
+            "uptime_seconds": uptime_seconds,
+            "recent_security_events": summary["recent_security_events"],
+            "recent_errors": summary.get("recent_errors", [])
         }
 
     def get_contact_requests(self):

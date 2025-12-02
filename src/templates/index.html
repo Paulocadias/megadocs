@@ -1,634 +1,422 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Docs to Markdown - Free Document Converter | paulocadias.com</title>
-    <meta name="description"
-        content="Free online tool to convert PDF, Word, Excel, PowerPoint, and other documents to Markdown format. No registration required, no data stored. Privacy-first document conversion.">
-    <meta name="keywords"
-        content="document converter, markdown converter, PDF to markdown, Word to markdown, Excel converter, free converter, online document conversion, privacy-first, no registration">
-    <meta name="author" content="Paulo Cadias">
-    <meta name="robots" content="index, follow">
-    <link rel="canonical" href="https://paulocadias.com/">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://paulocadias.com/">
-    <meta property="og:title" content="Docs to Markdown - Free Document Converter">
-    <meta property="og:description"
-        content="Convert PDF, Word, Excel, PowerPoint to Markdown instantly. Free, secure, no registration.">
-    <meta name="theme-color" content="#2563eb">
-    <link rel="icon" type="image/svg+xml"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='15' fill='%232563eb'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>MD</text></svg>">
-    <link rel="stylesheet" href="/static/style.css">
-    <meta name="csrf-token" content="{{ csrf_token }}">
-</head>
+{% block title %}Step 1: Ingest | MegaDoc{% endblock %}
+{% block description %}Upload one or more documents (PDF, Word, Excel) or images (JPG, PNG) for unified multi-modal
+processing. Upload multiple files to compare them. All sources are converted to searchable text for RAG.{% endblock %}
 
-<body>
-    <!-- Global Header - Outside container for consistent positioning -->
-    <div class="site-header-wrapper">
-        <header class="site-header">
-            <a href="/" class="logo-link">
-                <div class="logo-icon">MD</div>
-                <span class="logo-text">MegaDoc</span>
-            </a>
-            <nav>
-                <a href="/convert" class="active">Convert</a>
-                <a href="/rag">RAG Pipeline</a>
-                <a href="/compare">Compare</a>
-                <a href="/architecture">Architecture</a>
-                <a href="/use-cases">Use Cases</a>
-                <a href="/api/docs">API</a>
-                <a href="/contact">Contact</a>
-            </nav>
-        </header>
+{% block extra_head %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<style>
+    /* Compact page header */
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .page-header-left {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .page-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0;
+    }
+
+    .page-badge {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        color: var(--primary);
+        padding: 0.25rem 0.6rem;
+        border-radius: 9999px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+    }
+
+    .page-subtitle {
+        font-size: 0.85rem;
+        color: var(--text-light);
+        margin: 0;
+    }
+
+    /* Demo Banner */
+    .demo-banner {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        color: #92400e;
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        border: 1px solid #f59e0b;
+    }
+    .demo-icon {
+        font-size: 1.1rem;
+    }
+    @media (max-width: 600px) {
+        .demo-banner {
+            font-size: 0.75rem;
+            padding: 0.5rem 0.75rem;
+        }
+    }
+
+    /* Rate Limit Indicator */
+    .rate-limit-indicator {
+        display: none;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border: 1px solid #f59e0b;
+        border-radius: 8px;
+        margin: 0.75rem 0;
+        font-size: 0.85rem;
+        color: #92400e;
+    }
+    .rate-limit-indicator.visible {
+        display: flex;
+    }
+    .semaphore {
+        display: flex;
+        gap: 4px;
+    }
+    .semaphore-light {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #d1d5db;
+        transition: all 0.3s;
+    }
+    .semaphore-light.red {
+        background: #ef4444;
+        box-shadow: 0 0 8px #ef4444;
+    }
+    .semaphore-light.yellow {
+        background: #f59e0b;
+        box-shadow: 0 0 8px #f59e0b;
+    }
+    .semaphore-light.green {
+        background: #10b981;
+        box-shadow: 0 0 8px #10b981;
+    }
+    .countdown-timer {
+        font-weight: 700;
+        font-size: 1rem;
+        min-width: 30px;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Demo Banner -->
+<div class="demo-banner">
+    <span class="demo-icon">&#9888;</span>
+    <span><strong>DEMO</strong> - This is a portfolio demonstration. Free-tier API limits may cause latency or rate limiting. Data is session-based and not persisted.</span>
+</div>
+
+<!-- Compact Page Header -->
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Data Ingestion</h1>
+        <span class="page-badge">STEP 1</span>
     </div>
+    <p class="page-subtitle">Upload documents or images for RAG processing</p>
+</div>
 
-    <div class="app-container">
-        <!-- Hero Section -->
-        <section class="hero-section">
-            <span class="badge">TRUSTED BY DEVELOPERS WORLDWIDE</span>
-            <h1>Convert Documents to Markdown</h1>
-            <p>Transform PDF, Word, Excel, PowerPoint and more into clean Markdown.
-                Files are processed locally and deleted immediately after conversion.</p>
-            <!-- Live Stats -->
-            <div style="display: flex; justify-content: center; gap: 2rem; margin-top: 1.5rem;">
-                <div style="text-align: center;">
-                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);" id="liveConversions">--
-                    </div>
-                    <div style="font-size: 0.75rem; color: var(--text-light);">Documents Converted</div>
+<!-- Main Content -->
+<div class="main-content">
+    <div class="upload-card">
+        <!-- Honeypot -->
+        <input type="text" name="website" id="honeypot" style="display:none;" tabindex="-1" autocomplete="off">
+
+        <div class="upload-area">
+            <!-- Drop Zone - Compact -->
+            <div class="drop-zone" id="dropZone" style="padding: 1.5rem;">
+                <div class="icon-container" style="margin-bottom: 0.5rem;">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
                 </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);">100%</div>
-                    <div style="font-size: 0.75rem; color: var(--text-light);">Privacy Guaranteed</div>
+                <p style="margin: 0;"><strong>Drop file here</strong> or click to browse</p>
+                <p class="supported-formats" style="margin: 0.25rem 0 0; font-size: 0.8rem;">PDF, DOCX, XLSX, Images • Multiple files supported</p>
+                <input type="file" id="fileInput" accept="{{ extensions | join(',') }}" multiple hidden>
+            </div>
+
+            <!-- File Preview (hidden by default) -->
+            <div class="file-preview hidden" id="filePreview">
+                <span class="file-name" id="fileName"></span>
+                <button class="remove-file" id="removeFile">&times;</button>
+            </div>
+
+            <!-- Options Row: Sanitization + Output Format -->
+            <div style="display: flex; gap: 1rem; margin: 1rem 0; flex-wrap: wrap;">
+                <!-- Sanitization Options (inline) -->
+                <div style="flex: 1; min-width: 280px; display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);">
+                    <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-light); white-space: nowrap;">Security:</span>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer; font-size: 0.8rem;">
+                        <input type="checkbox" id="removeMacros" name="sanitization" value="remove_macros">
+                        <span>Macros</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer; font-size: 0.8rem;">
+                        <input type="checkbox" id="stripMetadata" name="sanitization" value="strip_metadata">
+                        <span>Metadata</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer; font-size: 0.8rem;">
+                        <input type="checkbox" id="redactEmails" name="sanitization" value="redact_emails">
+                        <span>Emails</span>
+                    </label>
                 </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">15+</div>
-                    <div style="font-size: 0.75rem; color: var(--text-light);">File Formats</div>
+                <!-- Output Format (inline) -->
+                <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);">
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-light); white-space: nowrap;">Format:</label>
+                    <select id="outputFormat" name="outputFormat" style="padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 0.8rem;">
+                        <option value="markdown" selected>Markdown</option>
+                        <option value="json">JSON</option>
+                        <option value="xml">XML</option>
+                        <option value="text">Plain Text</option>
+                    </select>
                 </div>
             </div>
-        </section>
 
-        <!-- Main Upload Area -->
-        <div class="main-content">
-            <div class="upload-card">
-                <p class="subtitle">Drop your file or click to upload</p>
+            <!-- Validation Indicator (compact) -->
+            <div id="validationIndicator" class="validation-indicator" style="display: none; margin: 0.5rem 0; padding: 0.4rem 0.75rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius); color: #059669; font-size: 0.8rem; font-weight: 600;">
+                ✓ Schema Validated
+            </div>
 
-                <!-- Honeypot -->
-                <input type="text" name="website" id="honeypot" style="display:none;" tabindex="-1" autocomplete="off">
-
-                <div class="upload-area">
-                    <!-- Drop Zone -->
-                    <div class="drop-zone" id="dropZone">
-                        <div class="icon-container">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="1.5">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                <polyline points="17 8 12 3 7 8" />
-                                <line x1="12" y1="3" x2="12" y2="15" />
-                            </svg>
-                        </div>
-                        <p><strong>Drag & drop your file here</strong></p>
-                        <p class="file-info">or click to browse</p>
-                        <p class="supported-formats">PDF, DOCX, XLSX, PPTX, HTML, Images, and more</p>
-                        <input type="file" id="fileInput" accept="{{ extensions | join(',') }}" hidden>
-                    </div>
-
-                    <!-- File Preview (hidden by default) -->
-                    <div class="file-preview hidden" id="filePreview">
-                        <span class="file-name" id="fileName"></span>
-                        <button class="remove-file" id="removeFile">&times;</button>
-                    </div>
-
-                    <!-- Output Format Options -->
-                    <div class="options">
-                        <label class="checkbox-container">
-                            <input type="radio" name="outputFormat" value="markdown" checked>
-                            <span>Markdown (.md)</span>
-                        </label>
-                        <label class="checkbox-container">
-                            <input type="radio" name="outputFormat" value="text">
-                            <span>Plain Text (.txt)</span>
-                        </label>
-                    </div>
-
-                    <!-- Convert Button -->
-                    <button class="cta-button" id="convertBtn" disabled>
-                        <span class="btn-text">Convert to Markdown</span>
-                        <span class="btn-loading" hidden>Converting...</span>
-                    </button>
+            <!-- Memory Status Display (compact) -->
+            <div id="memoryStatus" style="display: none; margin: 0.75rem 0; padding: 0.5rem 0.75rem; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: var(--radius); display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem;">
+                    <span style="color: var(--primary); font-weight: 600;">Memory:</span>
+                    <span id="memoryCount" style="font-weight: 700;">0</span>
+                    <span style="color: var(--text-light);">items</span>
+                    <span id="memoryItemsList" style="color: var(--text-light); margin-left: 0.5rem;"></span>
                 </div>
+                <button id="resetMemoryBtn" style="padding: 0.25rem 0.5rem; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Reset</button>
+            </div>
 
-                <!-- Status Message -->
-                <div class="status-message hidden" id="message"></div>
+            <!-- Ingest Button -->
+            <button class="cta-button" id="convertBtn" disabled>
+                <span class="btn-text">Ingest Document</span>
+                <span class="btn-loading" hidden>Processing...</span>
+            </button>
 
-                <!-- Result Display (hidden by default) -->
-                <div class="result-section hidden" id="resultSection">
-                    <div class="result-header">
-                        <h3>Conversion Complete</h3>
-                        <button class="close-result" id="closeResult" title="Start New Conversion">&times;</button>
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="action-buttons">
-                        <button class="action-btn primary" id="downloadMd" title="Download Markdown"
-                            aria-label="Download Markdown file">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                <polyline points="7 10 12 15 17 10" />
-                                <line x1="12" y1="15" x2="12" y2="3" />
-                            </svg>
-                            Download .md
-                        </button>
-                        <button class="action-btn" id="downloadTxt" title="Download Plain Text"
-                            aria-label="Download Plain Text file">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                <polyline points="14 2 14 8 20 8" />
-                                <line x1="16" y1="13" x2="8" y2="13" />
-                                <line x1="16" y1="17" x2="8" y2="17" />
-                            </svg>
-                            Download .txt
-                        </button>
-                        <button class="action-btn" id="copyContent" title="Copy to Clipboard"
-                            aria-label="Copy content to clipboard">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                            </svg>
-                            Copy
-                        </button>
-                        <button class="action-btn highlight" id="analyzeBtn" title="Analyze Document"
-                            aria-label="Analyze document content">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <path d="M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z" />
-                            </svg>
-                            Analyze
-                        </button>
-                        <button class="action-btn highlight" id="chunkBtn" title="Chunk for RAG"
-                            aria-label="Chunk document for RAG">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <rect x="3" y="3" width="7" height="7" />
-                                <rect x="14" y="3" width="7" height="7" />
-                                <rect x="14" y="14" width="7" height="7" />
-                                <rect x="3" y="14" width="7" height="7" />
-                            </svg>
-                            Chunk for RAG
-                        </button>
-                    </div>
-
-                    <!-- View Toggle -->
-                    <div class="view-toggle">
-                        <button class="view-btn active" id="viewRaw">Raw Markdown</button>
-                        <button class="view-btn" id="viewRendered">Rendered Preview</button>
-                    </div>
-
-                    <!-- Content Display -->
-                    <div class="content-display">
-                        <div class="content-view" id="rawView">
-                            <pre id="markdownContent"></pre>
-                        </div>
-                        <div class="content-view hidden" id="renderedView">
-                            <div id="renderedContent" class="rendered-markdown"></div>
-                        </div>
-                    </div>
-
-                    <!-- File Info -->
-                    <div class="file-info-bar" id="fileInfoBar">
-                        <span id="fileInfoName"></span>
-                        <span id="fileInfoTokens"></span>
-                    </div>
+            <!-- Progress Bar -->
+            <div id="uploadProgressContainer" style="display: none; margin-top: 1rem;">
+                <div
+                    style="display: flex; justify-content: space-between; margin-bottom: 0.25rem; font-size: 0.85rem; color: var(--text-light);">
+                    <span id="progressText">Uploading...</span>
+                    <span id="progressPercent">0%</span>
                 </div>
-
-                <!-- Analysis Modal -->
-                <div class="modal hidden" id="analysisModal">
-                    <div class="modal-content analysis-modal">
-                        <div class="modal-header">
-                            <h3>Document Analysis</h3>
-                            <button class="modal-close" id="closeAnalysis">&times;</button>
-                        </div>
-                        <div class="modal-body" id="analysisContent">
-                            <div class="loading-spinner">Analyzing...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Chunking Modal -->
-                <div class="modal hidden" id="chunkModal">
-                    <div class="modal-content chunk-modal">
-                        <div class="modal-header">
-                            <h3>RAG Chunking Preview</h3>
-                            <button class="modal-close" id="closeChunk">&times;</button>
-                        </div>
-                        <div class="chunk-controls">
-                            <label>
-                                Chunk Size (tokens):
-                                <select id="chunkSize">
-                                    <option value="256">256</option>
-                                    <option value="512" selected>512</option>
-                                    <option value="1024">1024</option>
-                                    <option value="2048">2048</option>
-                                </select>
-                            </label>
-                            <label>
-                                Overlap:
-                                <select id="chunkOverlap">
-                                    <option value="0">0</option>
-                                    <option value="50" selected>50</option>
-                                    <option value="100">100</option>
-                                    <option value="200">200</option>
-                                </select>
-                            </label>
-                            <button class="action-btn primary" id="rechunkBtn">Re-chunk</button>
-                            <button class="action-btn" id="exportChunksBtn">Export JSON</button>
-                        </div>
-                        <div class="chunk-stats" id="chunkStats"></div>
-                        <div class="modal-body chunks-container" id="chunksContent">
-                            <div class="loading-spinner">Chunking...</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Supported Formats -->
-                <div style="margin-top: 2rem; text-align: center;">
-                    <p
-                        style="font-size: 0.75rem; color: var(--text-light); margin-bottom: 1rem; font-weight: 600; letter-spacing: 0.05em;">
-                        SUPPORTED FORMATS</p>
-                    <div
-                        style="display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 1rem; max-width: 600px; margin: 0 auto;">
-                        <div
-                            style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0.75rem; background: var(--surface); border-radius: 8px; border: 1px solid var(--border);">
-                            <span style="font-size: 1.5rem;">📄</span>
-                            <span style="font-size: 0.75rem; font-weight: 500;">PDF</span>
-                        </div>
-                        <div
-                            style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0.75rem; background: var(--surface); border-radius: 8px; border: 1px solid var(--border);">
-                            <span style="font-size: 1.5rem;">📝</span>
-                            <span style="font-size: 0.75rem; font-weight: 500;">Word</span>
-                        </div>
-                        <div
-                            style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0.75rem; background: var(--surface); border-radius: 8px; border: 1px solid var(--border);">
-                            <span style="font-size: 1.5rem;">📊</span>
-                            <span style="font-size: 0.75rem; font-weight: 500;">Excel</span>
-                        </div>
-                        <div
-                            style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0.75rem; background: var(--surface); border-radius: 8px; border: 1px solid var(--border);">
-                            <span style="font-size: 1.5rem;">📑</span>
-                            <span style="font-size: 0.75rem; font-weight: 500;">PPT</span>
-                        </div>
-                        <div
-                            style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0.75rem; background: var(--surface); border-radius: 8px; border: 1px solid var(--border);">
-                            <span style="font-size: 1.5rem;">🖼️</span>
-                            <span style="font-size: 0.75rem; font-weight: 500;">Images</span>
-                        </div>
-                        <div
-                            style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem; padding: 0.75rem; background: var(--surface); border-radius: 8px; border: 1px solid var(--border);">
-                            <span style="font-size: 1.5rem;">🌐</span>
-                            <span style="font-size: 0.75rem; font-weight: 500;">HTML</span>
-                        </div>
+                <div style="width: 100%; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+                    <div id="progressBar"
+                        style="width: 0%; height: 100%; background: var(--primary); transition: width 0.1s linear;">
                     </div>
                 </div>
             </div>
 
-            <!-- Info Cards -->
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 2rem;">
-                <div
-                    style="background: var(--surface); padding: 1.25rem; border-radius: var(--radius); text-align: center; box-shadow: var(--shadow);">
-                    <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">{{ max_size_mb }}MB</div>
-                    <div style="font-size: 0.8rem; color: var(--text-light);">Max File Size</div>
+            <!-- Rate Limit Indicator with Semaphore -->
+            <div id="rateLimitIndicator" class="rate-limit-indicator">
+                <div class="semaphore">
+                    <div id="light1" class="semaphore-light"></div>
+                    <div id="light2" class="semaphore-light"></div>
+                    <div id="light3" class="semaphore-light"></div>
                 </div>
-                <div
-                    style="background: var(--surface); padding: 1.25rem; border-radius: var(--radius); text-align: center; box-shadow: var(--shadow);">
-                    <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">{{ rate_limit }}/min</div>
-                    <div style="font-size: 0.8rem; color: var(--text-light);">Rate Limit</div>
+                <span id="rateLimitMessage">Service busy. Please wait...</span>
+                <span class="countdown-timer" id="countdownTimer">--</span>
+                <span>seconds</span>
+            </div>
+
+            <!-- Finish & Go to RAG Button -->
+            <button class="cta-button" id="finishBtn"
+                style="display: none; margin-top: 1rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <span class="btn-text">✨ Finish & Go to RAG</span>
+            </button>
+        </div>
+
+        <!-- Status Message -->
+        <div class="status-message hidden" id="message"></div>
+
+        <!-- Result Display (hidden by default) -->
+        <div class="result-section hidden" id="resultSection">
+            <div class="result-header">
+                <h3>Conversion Complete</h3>
+                <button class="close-result" id="closeResult" title="Start New Conversion">&times;</button>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="action-btn primary" id="downloadMd" title="Download Markdown"
+                    aria-label="Download Markdown file">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    Download .md
+                </button>
+                <button class="action-btn" id="downloadTxt" title="Download Plain Text"
+                    aria-label="Download Plain Text file">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                    </svg>
+                    Download .txt
+                </button>
+                <button class="action-btn primary" id="analyzeInRAG" title="Analyze in RAG Chat"
+                    aria-label="Analyze converted document in RAG Chat"
+                    style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                    <span style="font-size: 1.1rem; margin-right: 0.5rem;">✨</span>
+                    Analyze in RAG Chat
+                </button>
+                <button class="action-btn" id="copyContent" title="Copy to Clipboard"
+                    aria-label="Copy content to clipboard">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                    Copy
+                </button>
+                <button class="action-btn highlight" id="analyzeBtn" title="Analyze Document"
+                    aria-label="Analyze document content">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z" />
+                    </svg>
+                    Analyze
+                </button>
+                <button class="action-btn highlight" id="chunkBtn" title="Chunk for RAG"
+                    aria-label="Chunk document for RAG">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" />
+                        <rect x="14" y="3" width="7" height="7" />
+                        <rect x="14" y="14" width="7" height="7" />
+                        <rect x="3" y="14" width="7" height="7" />
+                    </svg>
+                    Chunk for RAG
+                </button>
+            </div>
+
+            <!-- View Toggle -->
+            <div class="view-toggle">
+                <button class="view-btn active" id="viewRaw">Raw Markdown</button>
+                <button class="view-btn" id="viewRendered">Rendered Preview</button>
+            </div>
+
+            <!-- Content Display -->
+            <div class="content-display">
+                <div class="content-view" id="rawView">
+                    <pre id="markdownContent"></pre>
                 </div>
-                <div
-                    style="background: var(--surface); padding: 1.25rem; border-radius: var(--radius); text-align: center; box-shadow: var(--shadow);">
-                    <div style="font-size: 1.5rem; margin-bottom: 0.5rem;">0s</div>
-                    <div style="font-size: 0.8rem; color: var(--text-light);">Data Retention</div>
+                <div class="content-view hidden" id="renderedView">
+                    <div id="renderedContent" class="rendered-markdown"></div>
+                </div>
+            </div>
+
+            <!-- File Info -->
+            <div class="file-info-bar" id="fileInfoBar">
+                <span id="fileInfoName"></span>
+                <span id="fileInfoTokens"></span>
+            </div>
+        </div>
+
+        <!-- Analysis Modal -->
+        <div class="modal hidden" id="analysisModal">
+            <div class="modal-content analysis-modal">
+                <div class="modal-header">
+                    <h3>Document Analysis</h3>
+                    <button class="modal-close" id="closeAnalysis">&times;</button>
+                </div>
+                <div class="modal-body" id="analysisContent">
+                    <div class="loading-spinner">Analyzing...</div>
                 </div>
             </div>
         </div>
 
-        <!-- How It Works -->
-        <section style="margin-top: 4rem;">
-            <h2 style="text-align: center; margin-bottom: 2rem;">How It Works</h2>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; text-align: center;">
-                <div
-                    style="background: var(--surface); padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow);">
-                    <div
-                        style="width: 60px; height: 60px; background: linear-gradient(135deg, var(--primary), #3b82f6); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: white; font-size: 1.5rem; font-weight: bold;">
-                        1</div>
-                    <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Upload</h3>
-                    <p style="font-size: 0.875rem; color: var(--text-light);">Drag & drop or select your document. We
-                        support 15+ formats.</p>
+        <!-- Chunking Modal -->
+        <div class="modal hidden" id="chunkModal">
+            <div class="modal-content chunk-modal">
+                <div class="modal-header">
+                    <h3>RAG Chunking Preview</h3>
+                    <button class="modal-close" id="closeChunk">&times;</button>
                 </div>
-                <div
-                    style="background: var(--surface); padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow);">
-                    <div
-                        style="width: 60px; height: 60px; background: linear-gradient(135deg, var(--primary), #3b82f6); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: white; font-size: 1.5rem; font-weight: bold;">
-                        2</div>
-                    <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Convert</h3>
-                    <p style="font-size: 0.875rem; color: var(--text-light);">Our engine processes your file locally in
-                        seconds.</p>
+                <div class="chunk-controls">
+                    <label>
+                        Chunk Size (tokens):
+                        <select id="chunkSize">
+                            <option value="256">256</option>
+                            <option value="512" selected>512</option>
+                            <option value="1024">1024</option>
+                            <option value="2048">2048</option>
+                        </select>
+                    </label>
+                    <label>
+                        Overlap:
+                        <select id="chunkOverlap">
+                            <option value="0">0</option>
+                            <option value="50" selected>50</option>
+                            <option value="100">100</option>
+                            <option value="200">200</option>
+                        </select>
+                    </label>
+                    <button class="action-btn primary" id="rechunkBtn">Re-chunk</button>
+                    <button class="action-btn" id="exportChunksBtn">Export JSON</button>
                 </div>
-                <div
-                    style="background: var(--surface); padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow);">
-                    <div
-                        style="width: 60px; height: 60px; background: linear-gradient(135deg, var(--primary), #3b82f6); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; color: white; font-size: 1.5rem; font-weight: bold;">
-                        3</div>
-                    <h3 style="font-size: 1.1rem; margin-bottom: 0.5rem;">Download</h3>
-                    <p style="font-size: 0.875rem; color: var(--text-light);">Get your clean Markdown file. Original
-                        deleted instantly.</p>
+                <div class="chunk-stats" id="chunkStats"></div>
+                <div class="modal-body chunks-container" id="chunksContent">
+                    <div class="loading-spinner">Chunking...</div>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <!-- Why Choose Us -->
-        <section
-            style="margin-top: 4rem; background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%); color: white; padding: 3rem; border-radius: var(--radius); margin-left: -1rem; margin-right: -1rem;">
-            <h2 style="text-align: center; margin-bottom: 0.5rem;">Why Developers Choose Us</h2>
-            <p style="text-align: center; opacity: 0.85; margin-bottom: 2rem;">Built for privacy-conscious teams and AI
-                workflows</p>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
-                <div style="display: flex; gap: 1rem; align-items: flex-start;">
-                    <div style="font-size: 1.5rem;">🔒</div>
-                    <div>
-                        <h3 style="font-size: 1rem; margin-bottom: 0.25rem;">HIPAA & GDPR Ready</h3>
-                        <p style="font-size: 0.85rem; opacity: 0.85;">No data leaves your control. Perfect for regulated
-                            industries.</p>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 1rem; align-items: flex-start;">
-                    <div style="font-size: 1.5rem;">🤖</div>
-                    <div>
-                        <h3 style="font-size: 1rem; margin-bottom: 0.25rem;">RAG Pipeline Ready</h3>
-                        <p style="font-size: 0.85rem; opacity: 0.85;">Clean Markdown output ideal for LLM embeddings and
-                            vector DBs.</p>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 1rem; align-items: flex-start;">
-                    <div style="font-size: 1.5rem;">⚡</div>
-                    <div>
-                        <h3 style="font-size: 1rem; margin-bottom: 0.25rem;">REST API & MCP</h3>
-                        <p style="font-size: 0.85rem; opacity: 0.85;">Integrate with your stack. Works with Claude,
-                            LangChain, and more.</p>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 1rem; align-items: flex-start;">
-                    <div style="font-size: 1.5rem;">🚀</div>
-                    <div>
-                        <h3 style="font-size: 1rem; margin-bottom: 0.25rem;">Self-Hostable</h3>
-                        <p style="font-size: 0.85rem; opacity: 0.85;">Deploy on your own infrastructure for complete
-                            data control.</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Use Cases Preview -->
-        <section style="margin-top: 4rem;">
-            <h2 style="text-align: center; margin-bottom: 0.5rem;">Built For</h2>
-            <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">Teams that take data privacy
-                seriously</p>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
-                <div
-                    style="background: var(--surface); padding: 1.5rem; border-radius: var(--radius); text-align: center; box-shadow: var(--shadow);">
-                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🏥</div>
-                    <h3 style="font-size: 0.95rem; margin-bottom: 0.25rem;">Healthcare</h3>
-                    <p style="font-size: 0.8rem; color: var(--text-light);">HIPAA compliant processing</p>
-                </div>
-                <div
-                    style="background: var(--surface); padding: 1.5rem; border-radius: var(--radius); text-align: center; box-shadow: var(--shadow);">
-                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">⚖️</div>
-                    <h3 style="font-size: 0.95rem; margin-bottom: 0.25rem;">Legal</h3>
-                    <p style="font-size: 0.8rem; color: var(--text-light);">Confidential document handling</p>
-                </div>
-                <div
-                    style="background: var(--surface); padding: 1.5rem; border-radius: var(--radius); text-align: center; box-shadow: var(--shadow);">
-                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🏦</div>
-                    <h3 style="font-size: 0.95rem; margin-bottom: 0.25rem;">Finance</h3>
-                    <p style="font-size: 0.8rem; color: var(--text-light);">Secure data extraction</p>
-                </div>
-                <div
-                    style="background: var(--surface); padding: 1.5rem; border-radius: var(--radius); text-align: center; box-shadow: var(--shadow);">
-                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">🤖</div>
-                    <h3 style="font-size: 0.95rem; margin-bottom: 0.25rem;">AI Teams</h3>
-                    <p style="font-size: 0.8rem; color: var(--text-light);">RAG & LLM pipelines</p>
-                </div>
-                <div
-                    style="background: var(--surface); padding: 1.5rem; border-radius: var(--radius); text-align: center; box-shadow: var(--shadow);">
-                    <div style="font-size: 2rem; margin-bottom: 0.5rem;">💻</div>
-                    <h3 style="font-size: 0.95rem; margin-bottom: 0.25rem;">DevOps</h3>
-                    <p style="font-size: 0.8rem; color: var(--text-light);">CI/CD automation</p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Trust Badges -->
-        <section style="margin-top: 4rem; text-align: center;">
-            <p
-                style="font-size: 0.75rem; color: var(--text-light); margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.1em;">
-                Security & Compliance</p>
-            <div style="display: flex; justify-content: center; gap: 2rem; flex-wrap: wrap;">
-                <div
-                    style="display: flex; align-items: center; gap: 0.5rem; background: var(--surface); padding: 0.75rem 1.25rem; border-radius: 8px; box-shadow: var(--shadow);">
-                    <span style="color: var(--success); font-size: 1.25rem;">&#10003;</span>
-                    <span style="font-size: 0.85rem; font-weight: 500;">GDPR Compliant</span>
-                </div>
-                <div
-                    style="display: flex; align-items: center; gap: 0.5rem; background: var(--surface); padding: 0.75rem 1.25rem; border-radius: 8px; box-shadow: var(--shadow);">
-                    <span style="color: var(--success); font-size: 1.25rem;">&#10003;</span>
-                    <span style="font-size: 0.85rem; font-weight: 500;">HIPAA Ready</span>
-                </div>
-                <div
-                    style="display: flex; align-items: center; gap: 0.5rem; background: var(--surface); padding: 0.75rem 1.25rem; border-radius: 8px; box-shadow: var(--shadow);">
-                    <span style="color: var(--success); font-size: 1.25rem;">&#10003;</span>
-                    <span style="font-size: 0.85rem; font-weight: 500;">SOC 2 Architecture</span>
-                </div>
-                <div
-                    style="display: flex; align-items: center; gap: 0.5rem; background: var(--surface); padding: 0.75rem 1.25rem; border-radius: 8px; box-shadow: var(--shadow);">
-                    <span style="color: var(--success); font-size: 1.25rem;">&#10003;</span>
-                    <span style="font-size: 0.85rem; font-weight: 500;">Open Source</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- FAQ Section -->
-        <section style="margin-top: 4rem;">
-            <h2 style="text-align: center; margin-bottom: 2rem;">Frequently Asked Questions</h2>
-            <div style="max-width: 700px; margin: 0 auto;">
-                <details
-                    style="background: var(--surface); border-radius: var(--radius); margin-bottom: 1rem; box-shadow: var(--shadow);">
-                    <summary
-                        style="padding: 1.25rem; cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
-                        Is my data really deleted after conversion?
-                        <span style="color: var(--primary);">+</span>
-                    </summary>
-                    <div style="padding: 0 1.25rem 1.25rem; color: var(--text-light);">
-                        Yes, absolutely. Files are processed in memory and permanently deleted within milliseconds after
-                        your download completes. We have zero data retention - no backups, no copies, no traces.
-                    </div>
-                </details>
-                <details
-                    style="background: var(--surface); border-radius: var(--radius); margin-bottom: 1rem; box-shadow: var(--shadow);">
-                    <summary
-                        style="padding: 1.25rem; cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
-                        Can I use this for sensitive/confidential documents?
-                        <span style="color: var(--primary);">+</span>
-                    </summary>
-                    <div style="padding: 0 1.25rem 1.25rem; color: var(--text-light);">
-                        Yes. Our architecture is designed for regulated industries. No external API calls, local
-                        processing only, and immediate file deletion. For maximum security, you can also self-host the
-                        entire solution.
-                    </div>
-                </details>
-                <details
-                    style="background: var(--surface); border-radius: var(--radius); margin-bottom: 1rem; box-shadow: var(--shadow);">
-                    <summary
-                        style="padding: 1.25rem; cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
-                        Is there an API for automation?
-                        <span style="color: var(--primary);">+</span>
-                    </summary>
-                    <div style="padding: 0 1.25rem 1.25rem; color: var(--text-light);">
-                        Yes! We offer a REST API, batch processing, webhooks, and MCP integration for Claude/AI
-                        assistants. <a href="/contact" style="color: var(--primary);">Request API access</a> to get
-                        started.
-                    </div>
-                </details>
-                <details
-                    style="background: var(--surface); border-radius: var(--radius); margin-bottom: 1rem; box-shadow: var(--shadow);">
-                    <summary
-                        style="padding: 1.25rem; cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center;">
-                        What file formats are supported?
-                        <span style="color: var(--primary);">+</span>
-                    </summary>
-                    <div style="padding: 0 1.25rem 1.25rem; color: var(--text-light);">
-                        We support 15+ formats including PDF, Word (.docx, .doc), Excel (.xlsx, .xls), PowerPoint
-                        (.pptx, .ppt), HTML, Images (JPG, PNG, GIF), CSV, JSON, XML, EPUB, and plain text files.
-                    </div>
-                </details>
-            </div>
-        </section>
-
-        <!-- API CTA -->
-        <section
-            style="margin-top: 4rem; background: var(--surface); padding: 3rem; border-radius: var(--radius); text-align: center; box-shadow: var(--shadow);">
-            <span class="badge">FOR DEVELOPERS</span>
-            <h2 style="margin-top: 1rem; margin-bottom: 0.5rem;">Automate Your Document Pipeline</h2>
-            <p style="color: var(--text-light); max-width: 500px; margin: 0 auto 1.5rem;">REST API, batch processing,
-                webhooks, and MCP integration. Build powerful document workflows.</p>
-            <div
-                style="background: #0f172a; color: #e2e8f0; padding: 1rem 1.5rem; border-radius: 8px; font-family: monospace; font-size: 0.9rem; text-align: left; max-width: 500px; margin: 0 auto 1.5rem; overflow-x: auto;">
-                <span style="color: #f472b6;">curl</span> -X POST {{ request.url_root }}api/convert \<br>
-                &nbsp;&nbsp;-F <span style="color: #a5d6ff;">"file=@document.pdf"</span>
-            </div>
-            <a href="/contact" class="cta-button"
-                style="display: inline-block; width: auto; padding: 1rem 2rem;">Request API Access</a>
-        </section>
-
-        <!-- Footer -->
-        <footer style="margin-top: 4rem; padding: 3rem 0; border-top: 1px solid var(--border);">
-            <div
-                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 2rem; margin-bottom: 2rem;">
-                <div>
-                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
-                        <div
-                            style="width: 32px; height: 32px; background: var(--primary); border-radius: 6px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem;">
-                            MD</div>
-                        <span style="font-weight: 700;">MegaDoc</span>
-                    </div>
-                    <p style="font-size: 0.85rem; color: var(--text-light);">Privacy-first document conversion for
-                        developers and enterprises.</p>
-                </div>
-                <div>
-                    <h4 style="font-size: 0.9rem; margin-bottom: 1rem;">Product</h4>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <a href="/convert"
-                            style="color: var(--text-light); text-decoration: none; font-size: 0.85rem;">Converter</a>
-                        <a href="/api/docs"
-                            style="color: var(--text-light); text-decoration: none; font-size: 0.85rem;">API
-                            Documentation</a>
-                        <a href="/use-cases"
-                            style="color: var(--text-light); text-decoration: none; font-size: 0.85rem;">Use Cases</a>
-                    </div>
-                </div>
-                <div>
-                    <h4 style="font-size: 0.9rem; margin-bottom: 1rem;">Industries</h4>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <span style="color: var(--text-light); font-size: 0.85rem;">Healthcare</span>
-                        <span style="color: var(--text-light); font-size: 0.85rem;">Legal</span>
-                        <span style="color: var(--text-light); font-size: 0.85rem;">Finance</span>
-                    </div>
-                </div>
-                <div>
-                    <h4 style="font-size: 0.9rem; margin-bottom: 1rem;">Contact</h4>
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                        <a href="/contact"
-                            style="color: var(--text-light); text-decoration: none; font-size: 0.85rem;">API Access
-                            Request</a>
-                        <a href="mailto:contact@paulocadias.com"
-                            style="color: var(--text-light); text-decoration: none; font-size: 0.85rem;">contact@paulocadias.com</a>
-                    </div>
-                </div>
-            </div>
-            <div
-                style="text-align: center; padding-top: 2rem; border-top: 1px solid var(--border); color: var(--text-light); font-size: 0.8rem;">
-                <p>&copy; 2025 paulocadias.com - All rights reserved. Zero data retention. 100% privacy.</p>
-            </div>
-        </footer>
     </div>
 
-    <!-- Mobile Responsive Styles -->
-    <style>
-        @media (max-width: 768px) {
-            header {
-                flex-direction: column;
-                gap: 1rem;
-                text-align: center;
-            }
+    <!-- Compact Info Bar -->
+    <div style="display: flex; justify-content: center; gap: 2rem; margin-top: 1rem; padding: 0.75rem; background: var(--surface); border-radius: var(--radius); font-size: 0.8rem; color: var(--text-light);">
+        <span><strong>{{ max_size_mb }}MB</strong> max</span>
+        <span><strong>{{ rate_limit }}/min</strong> rate</span>
+        <span><strong>0s</strong> retention</span>
+    </div>
+</div>
+{% endblock %}
 
-            header nav {
-                flex-wrap: wrap;
-                justify-content: center;
-                gap: 1rem;
-            }
-
-            .hero-section>div {
-                flex-direction: column;
-                gap: 1rem;
-            }
-        }
-    </style>
-
-    <script>
-        window.CSRF_TOKEN = "{{ csrf_token }}";
-
-        // Fetch live conversion stats
-        async function fetchStats() {
-            try {
-                const response = await fetch('/api/stats');
-                const data = await response.json();
-                if (data.statistics && data.statistics.conversions) {
-                    const el = document.getElementById('liveConversions');
-                    if (el) {
-                        const count = data.statistics.conversions.total || 0;
-                        el.textContent = count.toLocaleString();
-                    }
-                }
-            } catch (e) {
+{% block extra_scripts %}
+<script>
+    // Set CSRF token for use in script.js
+    window.CSRF_TOKEN = '{{ csrf_token }}';
+</script>
+<script src="/static/script.js"></script>
+<script>
+    // Live stats counter
+    async function fetchStats() {
+        try {
+            const response = await fetch('/api/stats');
+            const data = await response.json();
+            if (data.success && data.statistics) {
                 const el = document.getElementById('liveConversions');
-                if (el) el.textContent = '1,000+';
+                if (el) {
+                    const count = data.statistics.conversions.total || 0;
+                    el.textContent = count.toLocaleString();
+                }
             }
+        } catch (e) {
+            const el = document.getElementById('liveConversions');
+            if (el) el.textContent = '1,000+';
         }
-        fetchStats();
-    </script>
-    <script src="/static/script.js"></script>
-</body>
-
-</html>
+    }
+    fetchStats();
+</script>
+{% endblock %}

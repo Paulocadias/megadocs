@@ -7,49 +7,65 @@
     <title>{% block title %}MegaDoc{% endblock %}</title>
     <meta name="description"
         content="{% block description %}Convert documents to Markdown for RAG pipelines and AI applications{% endblock %}">
-    <link rel="icon" type="image/svg+xml"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='15' fill='%232563eb'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>MD</text></svg>">
-
-    <!-- Typography -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;700;800&display=swap"
-        rel="stylesheet">
-
-    <link rel="stylesheet" href="/static/style.css">
+    {% include 'includes/head_common.html' %}
     {% block extra_head %}{% endblock %}
+    {% block styles %}{% endblock %}
 </head>
 
 <body>
-    <!-- Global Header - Outside container for consistent positioning -->
-    <div class="site-header-wrapper">
-        <header class="site-header">
-            <a href="/" class="logo-link">
-                <div class="logo-icon">MD</div>
-                <span class="logo-text">MegaDoc</span>
-            </a>
-            <nav>
-                <a href="/convert" {% if active_page=='convert' %} class="active" {% endif %}>Convert</a>
-                <a href="/rag" {% if active_page=='rag' %} class="active" {% endif %}>RAG Pipeline</a>
-                <a href="/compare" {% if active_page=='compare' %} class="active" {% endif %}>Compare</a>
-                <a href="/architecture" {% if active_page=='architecture' %} class="active" {% endif %}>Architecture</a>
-                <a href="/use-cases" {% if active_page=='use-cases' %} class="active" {% endif %}>Use Cases</a>
-                <a href="/api/docs" {% if active_page=='api' %} class="active" {% endif %}>API</a>
-                <a href="/contact" {% if active_page=='contact' %} class="active" {% endif %}>Contact</a>
-            </nav>
-        </header>
-    </div>
+    {% include 'includes/header.html' %}
 
     <div class="app-container{% block container_class %}{% endblock %}">
         {% block content %}{% endblock %}
-
-        <footer style="text-align: center; padding: 2rem 0; color: var(--text-light); font-size: 0.875rem;">
-            <p>&copy; 2025 paulocadias.com - Zero data retention. All processing happens locally.</p>
-        </footer>
     </div>
 
+    <!-- Compact Footer - Full Width -->
+    <footer style="margin-top: 3rem; padding: 2rem 0; border-top: 1px solid var(--border); background: var(--surface);">
+        <div style="max-width: 1200px; margin: 0 auto; padding: 0 2rem;">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem;">
+                <div style="font-size: 0.85rem; color: var(--text);">
+                    <strong>MegaDoc</strong> - Multi-Modal AI Platform
+                </div>
+                <div style="display: flex; gap: 0.75rem; font-size: 0.85rem; align-items: center;">
+                    <a href="/" style="color: var(--text-light); text-decoration: none;">Converter</a>
+                    <span style="color: var(--border); margin: 0 0.5rem;">|</span>
+                    <a href="/rag" style="color: var(--text-light); text-decoration: none;">RAG</a>
+                    <span style="color: var(--border); margin: 0 0.5rem;">|</span>
+                    <a href="/architecture" style="color: var(--text-light); text-decoration: none;">Architecture</a>
+                    <span style="color: var(--border); margin: 0 0.5rem;">|</span>
+                    <a href="/methodology" style="color: var(--text-light); text-decoration: none;">Methodology</a>
+                    <span style="color: var(--border); margin: 0 0.5rem;">|</span>
+                    <a href="/use-cases" style="color: var(--text-light); text-decoration: none;">Use Cases</a>
+                    <span style="color: var(--border); margin: 0 0.5rem;">|</span>
+                    <a href="/api/docs" style="color: var(--text-light); text-decoration: none;">API</a>
+                    <span style="color: var(--border); margin: 0 0.5rem;">|</span>
+                    <a href="https://github.com/Paulocadias/DOCSsite" target="_blank"
+                        style="color: var(--text-light); text-decoration: none;">GitHub</a>
+                </div>
+            </div>
+            <!-- Dynamic Status Bar -->
+            <div
+                style="text-align: center; padding: 0.75rem 0; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-light); font-family: 'Courier New', monospace; background: rgba(0, 0, 0, 0.02); border-radius: 4px; margin-top: 1rem;">
+                <span style="color: #10b981;">●</span> System Status: <strong
+                    style="color: var(--success);">Operational</strong> |
+                Infrastructure: <strong>Google Cloud Run (Serverless)</strong> |
+                Gateway: <strong>Multi-Model</strong> |
+                Cluster: <strong>eu-west-1-prod</strong>
+            </div>
+            <div style="text-align: center; padding-top: 1rem; font-size: 0.8rem; color: var(--text-light);">
+                © 2025 MegaDoc Platform • Ephemeral Session Storage Architecture
+            </div>
+        </div>
+    </footer>
+
     {% block extra_scripts %}{% endblock %}
+
+    <!-- MegaDoc Assistant Chat Widget -->
+    {% include 'includes/chat_widget.html' %}
+
+    <script>
+    </script>
 </body>
 
 </html>

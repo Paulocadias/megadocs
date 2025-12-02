@@ -1,0 +1,27 @@
+# Google App Engine configuration (alternative to Cloud Run)
+# Note: App Engine has free tier limits, Cloud Run is recommended
+
+runtime: python39
+
+instance_class: F1  # Free tier
+
+automatic_scaling:
+  min_instances: 0
+  max_instances: 10
+  target_cpu_utilization: 0.6
+
+env_variables:
+  FLASK_APP: 'src.app'
+  PYTHONUNBUFFERED: '1'
+  PYTHONPATH: '/app/src'
+
+handlers:
+  - url: /.*
+    script: auto
+    secure: always
+
+resources:
+  cpu: 0.5
+  memory_gb: 0.5
+  disk_size_gb: 10
+

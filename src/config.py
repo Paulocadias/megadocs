@@ -2,6 +2,13 @@
 Application configuration.
 """
 import os
+from pathlib import Path
+
+# Load environment variables from .env file (if exists)
+from dotenv import load_dotenv
+env_path = Path(__file__).parent.parent / '.env'
+if env_path.exists():
+    load_dotenv(env_path, override=True)  # Override system env vars with .env values
 
 
 class Config:
@@ -9,6 +16,7 @@ class Config:
 
     # Flask settings
     SECRET_KEY = os.environ.get("SECRET_KEY", os.urandom(32).hex())
+    TEMPLATES_AUTO_RELOAD = True  # Always reload templates
     
     # Security settings
     SESSION_COOKIE_SECURE = True  # Require HTTPS
@@ -27,8 +35,9 @@ class Config:
         ".epub", ".zip"
     }
 
-    # Rate limiting
-    RATE_LIMIT_REQUESTS = int(os.environ.get("RATE_LIMIT_REQUESTS", 20))
+    # Rate limiting ($10+ OpenRouter credits = 1000 req/day, 20 rpm)
+    # Internal rate limit set high; OpenRouter enforces external limits
+    RATE_LIMIT_REQUESTS = int(os.environ.get("RATE_LIMIT_REQUESTS", 200))  # Per IP per window
     RATE_LIMIT_WINDOW = int(os.environ.get("RATE_LIMIT_WINDOW", 60))  # seconds
 
     # Abuse prevention
@@ -40,6 +49,11 @@ class Config:
 
     # Admin authentication
     ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")  # CHANGE IN PRODUCTION!
+
+    # OpenRouter Gateway
+    OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+    OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+    OPENROUTER_HTTP_REFERER = os.environ.get("OPENROUTER_HTTP_REFERER", "https://megadocs.paulocadias.com")
 
     # Magic bytes for file validation
     MAGIC_BYTES = {

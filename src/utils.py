@@ -1,5 +1,7 @@
 import re
 import os
+import json
+import xml.etree.ElementTree as ET
 from werkzeug.utils import secure_filename
 
 def markdown_to_text(markdown_content):
@@ -92,3 +94,147 @@ def sanitize_filename(filename):
         return None
 
     return filename
+
+
+def remove_macros(content: str) -> str:
+    """
+    Remove macro-like patterns from content (VBA, Office macros, etc.).
+    This is a basic implementation that removes common macro patterns.
+    """
+    # Remove VBA-style macros
+    content = re.sub(r'(?i)Sub\s+\w+.*?End\s+Sub', '', content, flags=re.DOTALL)
+    content = re.sub(r'(?i)Function\s+\w+.*?End\s+Function', '', content, flags=re.DOTALL)
+    
+    # Remove Office macro references
+    content = re.sub(r'(?i)\{?MACRO\w+\}?', '', content)
+    content = re.sub(r'(?i)\{?DDE\w+\}?', '', content)
+    
+    # Remove embedded script patterns
+    content = re.sub(r'<script[^>]*>.*?</script>', '', content, flags=re.DOTALL | re.IGNORECASE)
+    content = re.sub(r'javascript:', '', content, flags=re.IGNORECASE)
+    
+    return content
+
+
+def strip_metadata(content: str) -> str:
+    """
+    Strip metadata patterns from content (author info, creation dates, etc.).
+    """
+    # Remove common metadata patterns
+    content = re.sub(r'(?i)Author:\s*[^\n]+', '', content)
+    content = re.sub(r'(?i)Created:\s*[^\n]+', '', content)
+    content = re.sub(r'(?i)Modified:\s*[^\n]+', '', content)
+    content = re.sub(r'(?i)Creator:\s*[^\n]+', '', content)
+    content = re.sub(r'(?i)Producer:\s*[^\n]+', '', content)
+    content = re.sub(r'(?i)Keywords:\s*[^\n]+', '', content)
+    content = re.sub(r'(?i)Subject:\s*[^\n]+', '', content)
+    
+    # Remove XML metadata tags
+    content = re.sub(r'<meta[^>]*>', '', content, flags=re.IGNORECASE)
+    content = re.sub(r'<dc:creator[^>]*>.*?</dc:creator>', '', content, flags=re.DOTALL | re.IGNORECASE)
+    content = re.sub(r'<dc:date[^>]*>.*?</dc:date>', '', content, flags=re.DOTALL | re.IGNORECASE)
+    
+    return content
+
+
+def redact_emails(content: str) -> str:
+    """
+    Redact email addresses from content, replacing with [EMAIL_REDACTED].
+    """
+    # Email regex pattern
+    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    content = re.sub(email_pattern, '[EMAIL_REDACTED]', content)
+    return content
+
+
+def format_as_json(content: str, filename: str) -> str:
+    """
+    Format content as structured JSON.
+    """
+    # Split content into sections (headers as keys)
+    lines = content.split('\n')
+    sections = []
+    current_section = {'type': 'paragraph', 'content': ''}
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            if current_section['content']:
+                sections.append(current_section)
+                current_section = {'type': 'paragraph', 'content': ''}
+            continue
+        
+        # Check if it's a header
+        if line.startswith('#'):
+            if current_section['content']:
+                sections.append(current_section)
+            level = len(line) - len(line.lstrip('#'))
+            title = line.lstrip('#').strip()
+            current_section = {
+                'type': f'h{min(level, 6)}',
+                'title': title,
+                'content': ''
+            }
+        else:
+            if current_section['content']:
+                current_section['content'] += '\n'
+            current_section['content'] += line
+    
+    if current_section['content']:
+        sections.append(current_section)
+    
+    result = {
+        'document': {
+            'filename': filename,
+            'sections': sections,
+            'total_sections': len(sections)
+        }
+    }
+    
+    return json.dumps(result, indent=2, ensure_ascii=False)
+
+
+def format_as_xml(content: str, filename: str) -> str:
+    """
+    Format content as structured XML.
+    """
+    root = ET.Element('document')
+    root.set('filename', filename)
+    body = ET.SubElement(root, 'body')
+    
+    lines = content.split('\n')
+    current_para = None
+    
+    for line in lines:
+        line = line.strip()
+        if not line:
+            current_para = None
+            continue
+        
+        # Check if it's a header
+        if line.startswith('#'):
+            current_para = None
+            level = len(line) - len(line.lstrip('#'))
+            title = line.lstrip('#').strip()
+            header_tag = f'h{min(level, 6)}'
+            header_elem = ET.SubElement(body, header_tag)
+            header_elem.text = title
+        else:
+            # Add as paragraph
+            if current_para is None:
+                current_para = ET.SubElement(body, 'p')
+                current_para.text = line
+            else:
+                # Append to current paragraph
+                if current_para.text:
+                    current_para.text += '\n' + line
+                else:
+                    current_para.text = line
+    
+    # Convert to string with proper formatting
+    try:
+        ET.indent(root, space='  ')  # Python 3.9+
+    except AttributeError:
+        pass  # Fallback for older Python versions
+    
+    return ET.tostring(root, encoding='unicode', method='xml')

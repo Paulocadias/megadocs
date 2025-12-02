@@ -59,18 +59,112 @@
 
 .site-header nav {
     display: flex;
-    gap: 1.5rem;
+    align-items: center;
+    gap: 1rem;
+}
+
+.site-header nav > span {
+    margin: 0 0.5rem;
+    flex-shrink: 0;
 }
 
 .site-header nav a {
     color: var(--text-light);
     text-decoration: none;
     font-weight: 500;
+    white-space: nowrap;
 }
 
 .site-header nav a:hover,
-.site-header nav a.active {
+.site-header nav a.active,
+.dropbtn:hover,
+.dropbtn.active {
     color: var(--primary);
+}
+
+/* Dropdown Menu */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropbtn {
+    background-color: transparent;
+    color: var(--text-light);
+    padding: 0;
+    font-size: 1rem;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+    font-family: inherit;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    background-color: var(--surface);
+    min-width: 160px;
+    box-shadow: var(--shadow);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    z-index: 1000;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem 0;
+}
+
+.dropdown-content a {
+    color: var(--text);
+    padding: 0.75rem 1rem;
+    text-decoration: none;
+    display: block;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.dropdown-content a:hover {
+    background-color: var(--bg);
+    color: var(--primary);
+}
+
+.dropdown:hover .dropdown-content,
+.dropdown.active .dropdown-content {
+    display: block;
+}
+
+/* Mobile-friendly dropdown */
+@media (max-width: 768px) {
+    .dropdown-content {
+        left: 0;
+        transform: none;
+        min-width: 200px;
+    }
+}
+
+/* Bootstrap dropdown styling override */
+.dropdown-menu {
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    border-radius: 8px;
+    padding: 0.5rem 0;
+    margin-top: 0.5rem;
+}
+
+.dropdown-item {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    color: var(--text);
+}
+
+.dropdown-item:hover,
+.dropdown-item.active {
+    background-color: var(--bg);
+    color: var(--primary);
+}
+
+.dropdown-toggle::after {
+    margin-left: 0.5rem;
 }
 
 /* Site Navigation (for pages with container layout) */
@@ -94,6 +188,45 @@
 .site-nav a:hover,
 .site-nav a.active {
     color: var(--primary);
+}
+
+/* Global container for all pages - matches header/footer width */
+.app-container {
+    max-width: 1200px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 2rem;
+    box-sizing: border-box;
+}
+
+/* Full-width container for pages like RAG chat */
+.app-container.full-width {
+    max-width: 100%;
+    padding: 0 2rem;
+}
+
+/* Responsive padding for mobile */
+@media (max-width: 768px) {
+
+    .site-header-wrapper,
+    .app-container {
+        padding: 0 1rem;
+    }
+
+    .app-container.full-width {
+        padding: 0 1rem;
+    }
+
+    .site-header nav {
+        gap: 1rem;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .app-container.full-width {
+        padding: 0 0.5rem;
+    }
 }
 
 * {
@@ -179,7 +312,7 @@ nav a.active {
 
 /* Main Content */
 .main-content {
-    max-width: 600px;
+    max-width: 100%;
     margin: 0 auto;
 }
 
@@ -213,9 +346,9 @@ nav a.active {
 
 .badge {
     display: inline-block;
-    background: #dbeafe;
+    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
     color: var(--primary);
-    padding: 0.25rem 0.75rem;
+    padding: 0.4rem 1rem;
     border-radius: 9999px;
     font-size: 0.75rem;
     font-weight: 700;
@@ -777,6 +910,17 @@ nav a.active {
 .status-message.error {
     background: #fee2e2;
     color: #991b1b;
+}
+
+.status-message.warning {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #f59e0b;
+}
+
+.status-message.info {
+    background: #dbeafe;
+    color: #1e40af;
 }
 
 .status-message.hidden {

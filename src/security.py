@@ -95,7 +95,7 @@ def get_request_fingerprint():
         request.headers.get("Accept-Language", ""),
         request.headers.get("Accept-Encoding", ""),
     ]
-    return hashlib.md5("|".join(components).encode()).hexdigest()[:16]
+    return hashlib.md5("|".join(components).encode(), usedforsecurity=False).hexdigest()[:16]
 
 
 def is_ip_blocked(ip):
@@ -244,7 +244,9 @@ def security_check(f):
             stats.record_rate_limit(ip)
             logger.warning(f"Rate limit exceeded for {ip}", extra={'request_id': request_id})
             response = jsonify({
-                "error": f"Rate limit exceeded. Try again in {reset_time} seconds.",
+                "error": "Queue Full",
+                "message": f"Rate limit exceeded. Try again in {reset_time} seconds.",
+                "retry_after": reset_time,
                 "request_id": request_id
             })
             response.headers["X-RateLimit-Remaining"] = "0"
