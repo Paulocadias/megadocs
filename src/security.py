@@ -34,7 +34,6 @@ conversion_lock = threading.Lock()
 
 def check_capacity():
     """Check if system has capacity for new conversion. Returns (allowed, active_count)."""
-    global active_conversions
     with conversion_lock:
         if active_conversions >= Config.MAX_CONCURRENT_CONVERSIONS:
             return False, active_conversions

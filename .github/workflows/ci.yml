@@ -33,8 +33,16 @@ jobs:
       run: |
         # Start Flask app in background
         python src/app.py &
-        echo "Waiting for server to start..."
-        sleep 5
+        echo "Waiting for server to start on port 8080..."
+        # Wait for server to be ready (up to 30 seconds)
+        for i in {1..30}; do
+          if curl -s http://localhost:8080/health > /dev/null 2>&1; then
+            echo "Server is ready!"
+            break
+          fi
+          echo "Attempt $i: Server not ready, waiting..."
+          sleep 1
+        done
 
     - name: Run Verification Script
       run: |

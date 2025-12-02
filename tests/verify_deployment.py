@@ -3,7 +3,7 @@ import time
 import sys
 import os
 
-BASE_URL = "http://localhost:5000"
+BASE_URL = "http://localhost:8080"
 
 def print_pass(message):
     print(f"✅ PASS: {message}")
