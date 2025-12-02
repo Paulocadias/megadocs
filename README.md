@@ -218,3 +218,4 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 **Author**: [Paulo Cadias](https://github.com/Paulocadias)
 **Live Demo**: [https://megadocs.paulocadias.com](https://megadocs.paulocadias.com)
+
