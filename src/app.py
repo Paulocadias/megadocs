@@ -3,6 +3,8 @@ Flask application for document to Markdown conversion.
 Refactored into modular components.
 """
 
+__version__ = "1.0.0"
+
 import os
 import logging
 from flask import Flask
