@@ -305,14 +305,15 @@ jobs:
             echo "  Time: $(date)"
             echo "═══════════════════════════════════════"
 
-            cd DocsSite
+            cd ~/megadocs || mkdir -p ~/megadocs && cd ~/megadocs
 
-            # Backup current version
-            cp .env .env.backup.$(date +%Y%m%d_%H%M%S) 2>/dev/null || true
-
-            # Pull latest
-            git fetch origin main
-            git reset --hard origin/main
+            # Clone or update repo
+            if [ -d .git ]; then
+              git fetch origin main
+              git reset --hard origin/main
+            else
+              git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git .
+            fi
 
             # Create environment config
             cat > .env << 'ENVEOF'
@@ -332,8 +333,13 @@ jobs:
             LOG_LEVEL=DEBUG
             ENVEOF
 
-            # Deploy
-            chmod +x deploy.sh && ./deploy.sh
+            # Setup and deploy
+            python3 -m venv venv 2>/dev/null || true
+            source venv/bin/activate
+            pip install -r requirements.txt -q
+            pkill -f "python src/app.py" || true
+            nohup python src/app.py > app.log 2>&1 &
+            sleep 3
 
             echo "✅ Staging deployment complete!"
 
@@ -391,16 +397,15 @@ jobs:
             echo "  Time: $(date)"
             echo "═══════════════════════════════════════"
 
-            cd DocsSite
+            cd ~/megadocs || mkdir -p ~/megadocs && cd ~/megadocs
 
-            # Create backup with timestamp
-            BACKUP_DIR="backups/$(date +%Y%m%d_%H%M%S)"
-            mkdir -p $BACKUP_DIR
-            cp .env $BACKUP_DIR/ 2>/dev/null || true
-
-            # Pull release
-            git fetch origin main
-            git reset --hard origin/main
+            # Clone or update repo
+            if [ -d .git ]; then
+              git fetch origin main
+              git reset --hard origin/main
+            else
+              git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git .
+            fi
 
             # Production environment config
             cat > .env << 'ENVEOF'
@@ -420,8 +425,13 @@ jobs:
             LOG_LEVEL=INFO
             ENVEOF
 
-            # Deploy with zero-downtime
-            chmod +x deploy.sh && ./deploy.sh
+            # Setup and deploy
+            python3 -m venv venv 2>/dev/null || true
+            source venv/bin/activate
+            pip install -r requirements.txt -q
+            pkill -f "python src/app.py" || true
+            nohup python src/app.py > app.log 2>&1 &
+            sleep 3
 
             echo "✅ Production deployment complete!"
 
