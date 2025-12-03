@@ -281,7 +281,18 @@ jobs:
       name: staging
       url: https://staging.megadocs.paulocadias.com
     steps:
+      - name: Check SSH Configuration
+        id: check-ssh
+        run: |
+          if [ -z "${{ secrets.GCP_HOST }}" ] || [ -z "${{ secrets.GCP_SSH_KEY }}" ]; then
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "⚠️ SSH secrets not configured - skipping deployment" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "configured=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Deploy to Staging
+        if: steps.check-ssh.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.GCP_HOST }}
@@ -327,12 +338,20 @@ jobs:
             echo "✅ Staging deployment complete!"
 
       - name: Staging Health Check
+        if: steps.check-ssh.outputs.configured == 'true'
         run: |
           sleep 15
           response=$(curl -sf https://staging.megadocs.paulocadias.com/health || echo '{"status":"unknown"}')
           echo "### 🎭 Staging Deployment" >> $GITHUB_STEP_SUMMARY
           echo "- **Version**: ${{ needs.build.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Health**: $(echo $response | jq -r '.status // "pending"')" >> $GITHUB_STEP_SUMMARY
+
+      - name: Staging Skip Notice
+        if: steps.check-ssh.outputs.configured != 'true'
+        run: |
+          echo "### 🎭 Staging Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ⏭️ Skipped (SSH not configured)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Note**: Configure GCP_HOST, GCP_USERNAME, GCP_SSH_KEY secrets to enable" >> $GITHUB_STEP_SUMMARY
 
   # ════════════════════════════════════════════════════════════════════════════
   # STAGE 6: DEPLOY TO PRODUCTION
@@ -348,7 +367,18 @@ jobs:
       name: production
       url: https://megadocs.paulocadias.com
     steps:
+      - name: Check SSH Configuration
+        id: check-ssh
+        run: |
+          if [ -z "${{ secrets.GCP_HOST }}" ] || [ -z "${{ secrets.GCP_SSH_KEY }}" ]; then
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "⚠️ SSH secrets not configured - skipping production deployment" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "configured=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Deploy to Production
+        if: steps.check-ssh.outputs.configured == 'true'
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.GCP_HOST }}
@@ -396,6 +426,7 @@ jobs:
             echo "✅ Production deployment complete!"
 
       - name: Production Health Check
+        if: steps.check-ssh.outputs.configured == 'true'
         run: |
           sleep 15
           for i in {1..5}; do
@@ -411,6 +442,13 @@ jobs:
             sleep 5
           done
           echo "⚠️ Health check pending" >> $GITHUB_STEP_SUMMARY
+
+      - name: Production Skip Notice
+        if: steps.check-ssh.outputs.configured != 'true'
+        run: |
+          echo "### 🚀 Production Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ⏭️ Skipped (SSH not configured)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Note**: Configure GCP_HOST, GCP_USERNAME, GCP_SSH_KEY secrets to enable" >> $GITHUB_STEP_SUMMARY
 
   # ════════════════════════════════════════════════════════════════════════════
   # NOTIFICATIONS & CLEANUP
