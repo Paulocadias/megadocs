@@ -135,21 +135,25 @@ curl -X POST https://megadocs.paulocadias.com/api/chat \
 ## Project Structure
 
 ```
-DocsSite/
-├── src/
-│   ├── app.py              # Flask entry point
-│   ├── routes.py           # API endpoints
-│   ├── converter.py        # Document conversion
-│   ├── chunker.py          # RAG chunking
-│   ├── embedder.py         # Vector embeddings
+megadocs/
+├── src/                       # Application source code
+│   ├── app.py                 # Flask entry point
+│   ├── routes.py              # API endpoints & web routes
+│   ├── converter.py           # Document conversion engine
+│   ├── chunker.py             # RAG text chunking
+│   ├── embedder.py            # Vector embeddings
 │   ├── openrouter_gateway.py  # Multi-model AI gateway
-│   ├── security.py         # CSRF, rate limiting
-│   └── templates/          # HTML templates
-├── static/                 # CSS, JS, assets
-├── tests/                  # Unit, integration, E2E tests
-├── docs/                   # Documentation
-├── Dockerfile              # Container configuration
-└── requirements.txt        # Python dependencies
+│   ├── security.py            # CSRF, rate limiting, auth
+│   ├── analytics.py           # Usage analytics & metrics
+│   ├── health.py              # Health checks & monitoring
+│   └── templates/             # Jinja2 HTML templates
+├── static/                    # CSS, JS, images
+├── tests/                     # Test suite (unit, integration)
+├── docs/                      # Technical documentation
+├── .github/workflows/         # CI/CD pipeline
+├── Dockerfile                 # Container configuration
+├── requirements.txt           # Python dependencies
+└── README.md                  # This file
 ```
 
 ---
