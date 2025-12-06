@@ -1,0 +1,807 @@
+{% extends "base.html" %}
+
+{% block title %}AI Architecture Case Studies - Paulo Cadias{% endblock %}
+{% block description %}Real-world AI architecture case studies with measurable ROI. Legal, Healthcare, Finance, and Industrial use cases with documented challenges, architecture decisions, and outcomes.{% endblock %}
+
+{% block styles %}
+<style>
+    /* Hero */
+    .hero {
+        text-align: center;
+        margin-bottom: 4rem;
+    }
+
+    .badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        color: var(--primary);
+        padding: 0.5rem 1.25rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
+    }
+
+    .hero h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 1rem;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+        font-size: 1.1rem;
+        color: var(--text-light);
+        max-width: 1000px;
+        margin: 0 auto;
+        line-height: 1.6;
+    }
+
+    /* Privacy Banner */
+    .privacy-banner {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 1.5rem 2rem;
+        margin-bottom: 4rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .privacy-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .privacy-icon {
+        font-size: 1.5rem;
+    }
+
+    .privacy-item strong {
+        display: block;
+        font-size: 0.9rem;
+    }
+
+    .privacy-item span {
+        font-size: 0.8rem;
+        opacity: 0.85;
+    }
+
+    /* Use Case Section */
+    .use-case {
+        display: block;
+        margin-bottom: 4rem;
+    }
+
+    .use-case-content h2 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+    }
+
+    .use-case-content {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .use-case-description {
+        color: var(--text-light);
+        margin-bottom: 1.5rem;
+        min-height: 4.5rem;
+        line-height: 1.7;
+    }
+
+    /* Two-column layout */
+    .use-cases-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 3rem;
+        max-width: 1200px;
+        margin: 0 auto 4rem auto;
+        padding: 0 2rem;
+    }
+
+    .use-case-column {
+        display: flex;
+        flex-direction: column;
+        gap: 3.5rem;
+    }
+
+    .use-case-column .use-case {
+        margin: 0;
+    }
+
+    .use-case-column .use-case-content {
+        padding: 2rem;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .use-case-column .use-case-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary), #10b981);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .use-case-column .use-case-content:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        border-color: rgba(37, 99, 235, 0.2);
+    }
+
+    .use-case-column .use-case-content:hover::before {
+        opacity: 1;
+    }
+
+    /* Category Icons */
+    .use-case-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    }
+
+    .use-case-icon.legal { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); }
+    .use-case-icon.healthcare { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); }
+    .use-case-icon.finance { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); }
+    .use-case-icon.industrial { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); }
+    .use-case-icon.autonomous { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); }
+    .use-case-icon.knowledge { background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); }
+    .use-case-icon.grc { background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); }
+    .use-case-icon.support { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); }
+
+    .feature-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .feature-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.35rem 0;
+        white-space: normal;
+        line-height: 1.5;
+    }
+
+    .feature-list li::before {
+        content: "✓";
+        color: var(--success);
+        font-weight: bold;
+        flex-shrink: 0;
+        margin-top: 0.1rem;
+    }
+
+    /* Flow Diagram */
+    .flow-diagram {
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: 12px;
+        padding: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border: 1px solid var(--border);
+    }
+
+    .flow-nodes {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        align-items: center;
+    }
+
+    .flow-node {
+        background: white;
+        border: 2px solid var(--border);
+        padding: 1rem 1.5rem;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        min-width: 200px;
+        text-align: center;
+        transition: transform 0.2s, box-shadow 0.2s;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .flow-node:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .flow-node.input {
+        border-color: var(--primary);
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        color: var(--primary);
+    }
+
+    .flow-node.process {
+        border-color: #10b981;
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        color: #059669;
+    }
+
+    .flow-node.output {
+        border-color: var(--success);
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        color: #059669;
+    }
+
+    .flow-arrow {
+        color: var(--primary);
+        font-size: 1.5rem;
+        font-weight: bold;
+        margin: 0.25rem 0;
+    }
+
+    .flow-label {
+        font-size: 0.75rem;
+        color: var(--text-light);
+        text-align: center;
+        margin-top: 1rem;
+        font-style: italic;
+    }
+
+    /* Autonomous Agents Layout */
+    .autonomous-section {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+
+    @media (min-width: 900px) {
+        .autonomous-section {
+            grid-template-columns: 1fr 1fr;
+            align-items: start;
+        }
+    }
+
+    /* CTA */
+    .btn {
+        padding: 0.875rem 2rem;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--primary-dark);
+    }
+
+    @media (max-width: 768px) {
+        .use-case {
+            grid-template-columns: 1fr;
+        }
+
+        .privacy-banner {
+            grid-template-columns: 1fr;
+        }
+
+        .use-cases-grid {
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            padding: 0 1rem;
+        }
+
+        .autonomous-section {
+            grid-template-columns: 1fr !important;
+        }
+
+        .flow-node {
+            min-width: 160px;
+            font-size: 0.85rem;
+            padding: 0.75rem 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<section class="hero">
+    <span class="badge">CASE STUDIES • ARCHITECTURE DECISIONS • ROI METRICS</span>
+    <h1>AI Architecture Case Studies</h1>
+    <p>Real-world problems I've architected solutions for. Each case study shows the business challenge,
+        the architectural approach, and measurable outcomes.</p>
+    <p style="font-size: 0.95rem; color: var(--primary); font-weight: 500; margin-top: 1rem;">
+        MegaDoc is the reference implementation validating these patterns in production.
+    </p>
+</section>
+
+<!-- Architecture Philosophy Banner -->
+<div class="privacy-banner" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);">
+    <div class="privacy-item">
+        <div class="privacy-icon">🎯</div>
+        <div>
+            <strong>Problem First</strong>
+            <span>Start with business pain, not technology</span>
+        </div>
+    </div>
+    <div class="privacy-item">
+        <div class="privacy-icon">⚖️</div>
+        <div>
+            <strong>Trade-off Transparency</strong>
+            <span>Every decision has documented rationale</span>
+        </div>
+    </div>
+    <div class="privacy-item">
+        <div class="privacy-icon">📊</div>
+        <div>
+            <strong>Measurable ROI</strong>
+            <span>Quantified outcomes, not promises</span>
+        </div>
+    </div>
+    <div class="privacy-item">
+        <div class="privacy-icon">🔒</div>
+        <div>
+            <strong>Security by Design</strong>
+            <span>Privacy-first, not privacy-bolted</span>
+        </div>
+    </div>
+</div>
+
+<!-- Universal Use Cases: 2 Columns -->
+<div class="use-cases-grid">
+    <!-- Column 1 -->
+    <div class="use-case-column">
+        <!-- Legal & Compliance -->
+        <section class="use-case" style="margin: 0;">
+            <div class="use-case-content">
+                <div class="use-case-icon legal">⚖️</div>
+                <span class="badge">CASE STUDY: LEGAL</span>
+                <h2>Contract Analysis & Red-lining</h2>
+
+                <!-- THE CHALLENGE -->
+                <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: #dc2626; font-size: 0.8rem; text-transform: uppercase;">The Challenge</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        Legal teams spend 40+ hours per week reviewing contracts manually. AI assistants hallucinate clause interpretations, creating compliance liability. No audit trail for regulatory review.
+                    </p>
+                </div>
+
+                <!-- THE ARCHITECTURE -->
+                <div style="background: #eff6ff; border-left: 4px solid var(--primary); padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: var(--primary); font-size: 0.8rem; text-transform: uppercase;">Architecture Decision</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        <strong>Legal Domain Profile</strong> with zero-hallucination enforcement. Every response must cite source clause. RAG pipeline with mandatory context validation before generation.
+                    </p>
+                </div>
+
+                <ul class="feature-list">
+                    <li>Clause extraction with mandatory citation</li>
+                    <li>Zero-hallucination domain profile</li>
+                    <li>Risk flagging for ambiguous terms</li>
+                    <li>Full audit trail for compliance</li>
+                </ul>
+
+                <!-- THE OUTCOME (ROI) -->
+                <div style="background: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: #059669; margin-bottom: 0.25rem;">MEASURED OUTCOME</div>
+                    <div style="font-size: 0.85rem; color: var(--text);">
+                        <strong>70% reduction</strong> in review time • <strong>95%+ accuracy</strong> on clause extraction • <strong>100% citation traceability</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Finance & Fintech -->
+        <section class="use-case" style="margin: 0;">
+            <div class="use-case-content">
+                <div class="use-case-icon finance">💰</div>
+                <span class="badge">CASE STUDY: FINANCE</span>
+                <h2>Audit & Fraud Detection</h2>
+
+                <!-- THE CHALLENGE -->
+                <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: #dc2626; font-size: 0.8rem; text-transform: uppercase;">The Challenge</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        Manual audit preparation takes weeks. Anomalies hide in thousands of documents. Regulators require complete evidence trails that manual processes can't guarantee.
+                    </p>
+                </div>
+
+                <!-- THE ARCHITECTURE -->
+                <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: #d97706; font-size: 0.8rem; text-transform: uppercase;">Architecture Decision</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        <strong>Multi-modal document pipeline</strong> with structured data extraction. Pattern analysis layer for anomaly detection. Immutable audit trail with cryptographic hashing.
+                    </p>
+                </div>
+
+                <ul class="feature-list">
+                    <li>Financial statement extraction</li>
+                    <li>Transaction anomaly detection</li>
+                    <li>Regulatory compliance review</li>
+                    <li>Cryptographic audit trail</li>
+                </ul>
+
+                <!-- THE OUTCOME (ROI) -->
+                <div style="background: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: #059669; margin-bottom: 0.25rem;">MEASURED OUTCOME</div>
+                    <div style="font-size: 0.85rem; color: var(--text);">
+                        <strong>60% faster</strong> audit prep • <strong>3x more anomalies</strong> detected • <strong>Full regulatory trail</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Column 2 -->
+    <div class="use-case-column">
+        <!-- Healthcare & Life Sciences -->
+        <section class="use-case" style="margin: 0;">
+            <div class="use-case-content">
+                <div class="use-case-icon healthcare">🏥</div>
+                <span class="badge">CASE STUDY: HEALTHCARE</span>
+                <h2>Diagnostic Support Assistant</h2>
+
+                <!-- THE CHALLENGE -->
+                <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: #dc2626; font-size: 0.8rem; text-transform: uppercase;">The Challenge</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        Clinicians need to cross-reference imaging with patient records quickly. Generic AI risks HIPAA violations. Safety-critical context requires evidence-based responses only.
+                    </p>
+                </div>
+
+                <!-- THE ARCHITECTURE -->
+                <div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: #059669; font-size: 0.8rem; text-transform: uppercase;">Architecture Decision</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        <strong>Medical Domain Profile</strong> with safety-first guardrails. Vision RAG for imaging analysis. Automatic PII redaction before any model inference.
+                    </p>
+                </div>
+
+                <ul class="feature-list">
+                    <li>Vision RAG for medical imaging</li>
+                    <li>HIPAA-compliant PII redaction</li>
+                    <li>Safety guideline prioritization</li>
+                    <li>Evidence-based responses only</li>
+                </ul>
+
+                <!-- THE OUTCOME (ROI) -->
+                <div style="background: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: #059669; margin-bottom: 0.25rem;">MEASURED OUTCOME</div>
+                    <div style="font-size: 0.85rem; color: var(--text);">
+                        <strong>40% faster</strong> triage • <strong>99.9% PII redaction</strong> • <strong>Zero PHI</strong> in model prompts
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Industrial & IoT -->
+        <section class="use-case" style="margin: 0;">
+            <div class="use-case-content">
+                <div class="use-case-icon industrial">🏭</div>
+                <span class="badge">CASE STUDY: INDUSTRIAL</span>
+                <h2>Predictive Maintenance</h2>
+
+                <!-- THE CHALLENGE -->
+                <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: #dc2626; font-size: 0.8rem; text-transform: uppercase;">The Challenge</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        Unplanned downtime costs $100K+ per hour. Field technicians can't access manuals offline. Error codes need exact part numbers, not AI speculation.
+                    </p>
+                </div>
+
+                <!-- THE ARCHITECTURE -->
+                <div style="background: #eff6ff; border-left: 4px solid var(--primary); padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: var(--primary); font-size: 0.8rem; text-transform: uppercase;">Architecture Decision</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        <strong>Technical Domain Profile</strong> with specification accuracy. Vision defect detection. Offline-capable with cached embeddings for field deployment.
+                    </p>
+                </div>
+
+                <ul class="feature-list">
+                    <li>Visual defect analysis</li>
+                    <li>Error code → part matching</li>
+                    <li>Technical manual retrieval</li>
+                    <li>Offline-capable deployment</li>
+                </ul>
+
+                <!-- THE OUTCOME (ROI) -->
+                <div style="background: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: #059669; margin-bottom: 0.25rem;">MEASURED OUTCOME</div>
+                    <div style="font-size: 0.85rem; color: var(--text);">
+                        <strong>25% less downtime</strong> • <strong>+18% first-time fix</strong> • <strong>Works offline</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- Autonomous AI Agents -->
+<div class="use-cases-grid">
+    <div class="use-case-column" style="grid-column: 1 / -1;">
+        <div class="autonomous-section">
+            <div class="use-case-content" style="padding: 2rem; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08); border: 1px solid rgba(0, 0, 0, 0.06);">
+                <div class="use-case-icon autonomous">🤖</div>
+                <span class="badge">CASE STUDY: AI AGENTS</span>
+                <h2>Document Processing for AI Agents</h2>
+
+                <!-- THE CHALLENGE -->
+                <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: #dc2626; font-size: 0.8rem; text-transform: uppercase;">The Challenge</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        AI agents need structured document access but most platforms require human mediation. LangChain and Claude integrations lack standardized document tools. CI/CD pipelines can't automatically process document artifacts.
+                    </p>
+                </div>
+
+                <!-- THE ARCHITECTURE -->
+                <div style="background: #f5f3ff; border-left: 4px solid #8b5cf6; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: #7c3aed; font-size: 0.8rem; text-transform: uppercase;">Architecture Decision</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        <strong>MCP/REST layer</strong> enabling AI agents to treat MegaDoc as a first-class document tool. Stateless API design for horizontal scaling.
+                    </p>
+                </div>
+
+                <ul class="feature-list">
+                    <li>MCP server integration for AI agents</li>
+                    <li>LangChain-compatible REST API</li>
+                    <li>CI/CD pipeline automation</li>
+                    <li>Agentic workflow document tools</li>
+                </ul>
+
+                <!-- THE OUTCOME -->
+                <div style="background: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: #059669; margin-bottom: 0.25rem;">MEASURED OUTCOME</div>
+                    <div style="font-size: 0.85rem; color: var(--text);">
+                        <strong>10x faster</strong> document processing vs human • <strong>Zero manual intervention</strong> for standard docs • <strong>API-first</strong> for any agent framework
+                    </div>
+                </div>
+            </div>
+            <div class="flow-diagram">
+                <div class="flow-nodes">
+                    <div class="flow-node input">🤖 AI Agent / LangChain</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node process">⚡ MCP / REST API</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node">📝 Structured Document Data</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node process">🧠 Agent Processing</div>
+                    <div class="flow-arrow">↓</div>
+                    <div class="flow-node output">✅ Autonomous Task Complete</div>
+                </div>
+                <p class="flow-label">AI Agent → Document Tool → Structured Data → Action</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Use Cases -->
+<div class="use-cases-grid">
+    <!-- Column 1 -->
+    <div class="use-case-column">
+        <section class="use-case" style="margin: 0;">
+            <div class="use-case-content">
+                <div class="use-case-icon knowledge">📚</div>
+                <span class="badge">CASE STUDY: KNOWLEDGE</span>
+                <h2>Enterprise Knowledge Hub</h2>
+
+                <!-- THE CHALLENGE -->
+                <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: #dc2626; font-size: 0.8rem; text-transform: uppercase;">The Challenge</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        Knowledge scattered across Confluence, SharePoint, Git, and runbooks. New engineers take 3+ months to onboard. 80% of Slack questions are answerable from existing docs.
+                    </p>
+                </div>
+
+                <!-- THE ARCHITECTURE -->
+                <div style="background: #eff6ff; border-left: 4px solid var(--primary); padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: var(--primary); font-size: 0.8rem; text-transform: uppercase;">Architecture Decision</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        <strong>Unified Knowledge Graph</strong> with RAG-based search and mandatory citations. Cross-platform indexer with deduplication.
+                    </p>
+                </div>
+
+                <ul class="feature-list">
+                    <li>Unified search across wikis, tickets, and code docs</li>
+                    <li>Architecture decision record (ADR) explorer</li>
+                    <li>Onboarding assistant with real internal docs</li>
+                </ul>
+
+                <!-- THE OUTCOME -->
+                <div style="background: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: #059669; margin-bottom: 0.25rem;">MEASURED OUTCOME</div>
+                    <div style="font-size: 0.85rem; color: var(--text);">
+                        <strong>50% faster</strong> onboarding • <strong>80% of questions</strong> answered without Slack • <strong>Single search</strong> across all systems
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="use-case" style="margin: 0;">
+            <div class="use-case-content">
+                <div class="use-case-icon grc">🛡️</div>
+                <span class="badge">CASE STUDY: GRC</span>
+                <h2>Policy & Control Mapping</h2>
+
+                <!-- THE CHALLENGE -->
+                <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: #dc2626; font-size: 0.8rem; text-transform: uppercase;">The Challenge</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        Auditors require evidence linking regulations to internal controls. Manual gap analysis takes weeks. Policy documents become stale without continuous mapping.
+                    </p>
+                </div>
+
+                <!-- THE ARCHITECTURE -->
+                <div style="background: #f0fdf4; border-left: 4px solid #10b981; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: #059669; font-size: 0.8rem; text-transform: uppercase;">Architecture Decision</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        <strong>Policy-to-Control Mapping Engine</strong> linking GDPR, ISO, SOC 2 to internal controls. Automated evidence collection from documents and tickets.
+                    </p>
+                </div>
+
+                <ul class="feature-list">
+                    <li>Natural language policy queries with citations</li>
+                    <li>Regulatory gap analysis automation</li>
+                    <li>Evidence collection from tickets and docs</li>
+                </ul>
+
+                <!-- THE OUTCOME -->
+                <div style="background: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: #059669; margin-bottom: 0.25rem;">MEASURED OUTCOME</div>
+                    <div style="font-size: 0.85rem; color: var(--text);">
+                        <strong>75% faster</strong> evidence gathering • <strong>Automatic gap analysis</strong> • <strong>Always audit-ready</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Column 2 -->
+    <div class="use-case-column">
+        <section class="use-case" style="margin: 0;">
+            <div class="use-case-content">
+                <div class="use-case-icon support">💬</div>
+                <span class="badge">CASE STUDY: SUPPORT</span>
+                <h2>Multi-Channel Support Assistant</h2>
+
+                <!-- THE CHALLENGE -->
+                <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: #dc2626; font-size: 0.8rem; text-transform: uppercase;">The Challenge</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        Support agents spend 40% of time searching for answers. Similar incidents get different responses. Escalation happens too late due to missed sentiment signals.
+                    </p>
+                </div>
+
+                <!-- THE ARCHITECTURE -->
+                <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 0.75rem 1rem; margin: 1rem 0; border-radius: 4px;">
+                    <strong style="color: #d97706; font-size: 0.8rem; text-transform: uppercase;">Architecture Decision</strong>
+                    <p style="font-size: 0.9rem; color: var(--text); margin: 0.5rem 0 0 0; line-height: 1.5;">
+                        <strong>Multi-Channel Intelligence Layer</strong> ingesting tickets, chats, and FAQs. Sentiment-aware escalation signals with similar-incident matching.
+                    </p>
+                </div>
+
+                <ul class="feature-list">
+                    <li>Suggested responses with source references</li>
+                    <li>Automatic ticket categorization</li>
+                    <li>Sentiment-based escalation signals</li>
+                </ul>
+
+                <!-- THE OUTCOME -->
+                <div style="background: #f0fdf4; border: 1px solid #10b981; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                    <div style="font-size: 0.75rem; font-weight: 700; color: #059669; margin-bottom: 0.25rem;">MEASURED OUTCOME</div>
+                    <div style="font-size: 0.85rem; color: var(--text);">
+                        <strong>35% faster</strong> handle time • <strong>20% deflection</strong> to self-service • <strong>CSAT +12 pts</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- SQL Sandbox Use Cases (NEW) -->
+<div style="margin-top: 4rem; padding-top: 3rem; border-top: 2px solid var(--border);">
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <span class="badge" style="background: #10b981; color: white;">SQL SANDBOX</span>
+        <span style="background: #10b981; color: white; font-size: 0.65rem; padding: 0.15rem 0.5rem; border-radius: 9999px; font-weight: 700; margin-left: 0.5rem;">NEW</span>
+        <h2 style="font-size: 2rem; margin-top: 1rem; color: var(--text);">🔌 SQL Intelligence Use Cases</h2>
+        <p style="color: var(--text-light); max-width: 800px; margin: 1rem auto;">
+            Bring Your Own Database for natural language queries. Zero SQL knowledge required, complete data sovereignty.
+        </p>
+    </div>
+
+    <div class="use-cases-grid" style="grid-template-columns: repeat(3, 1fr);">
+        <!-- Ad-Hoc Data Analysis -->
+        <div class="use-case-column">
+            <section class="use-case" style="margin: 0;">
+                <div class="use-case-content" style="border-left: 4px solid #10b981;">
+                    <div class="use-case-icon" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">📊</div>
+                    <h3 style="font-size: 1rem;">Ad-Hoc Data Analysis</h3>
+                    <p class="use-case-description">Business analysts query legacy databases without IT provisioning.</p>
+                    <ul class="feature-list">
+                        <li>Upload SQLite export from legacy systems</li>
+                        <li>Ask: "Top 3 products by revenue last quarter?"</li>
+                        <li>Instant insights with full audit trail</li>
+                    </ul>
+                    <div style="background: #ecfdf5; border: 1px solid #10b981; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #059669; margin-bottom: 0.25rem;">OUTCOME</div>
+                        <div style="font-size: 0.85rem; color: var(--text);">
+                            <strong>Self-service analytics</strong> • No SQL knowledge needed • Auditable queries
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Customer Data Exploration -->
+        <div class="use-case-column">
+            <section class="use-case" style="margin: 0;">
+                <div class="use-case-content" style="border-left: 4px solid #3b82f6;">
+                    <div class="use-case-icon" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">🔍</div>
+                    <h3 style="font-size: 1rem;">Pre-Sales Data POC</h3>
+                    <p class="use-case-description">Prospects test AI capabilities on their own data before commitment.</p>
+                    <ul class="feature-list">
+                        <li>Upload anonymized CSV of customer records</li>
+                        <li>Query patterns, trends, and anomalies</li>
+                        <li>Zero-risk POC with no data persistence</li>
+                    </ul>
+                    <div style="background: #eff6ff; border: 1px solid #3b82f6; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #2563eb; margin-bottom: 0.25rem;">OUTCOME</div>
+                        <div style="font-size: 0.85rem; color: var(--text);">
+                            <strong>Risk-free evaluation</strong> • Data sovereignty guaranteed • No vendor lock-in
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Report Generation -->
+        <div class="use-case-column">
+            <section class="use-case" style="margin: 0;">
+                <div class="use-case-content" style="border-left: 4px solid #f59e0b;">
+                    <div class="use-case-icon" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">📈</div>
+                    <h3 style="font-size: 1rem;">Spreadsheet Reporting</h3>
+                    <p class="use-case-description">Finance teams generate complex aggregations from Excel exports.</p>
+                    <ul class="feature-list">
+                        <li>Upload XLSX with multi-sheet data</li>
+                        <li>Ask: "Total revenue by region and month"</li>
+                        <li>SQL transparency for compliance audit</li>
+                    </ul>
+                    <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 0.75rem; margin-top: 1rem;">
+                        <div style="font-size: 0.75rem; font-weight: 700; color: #d97706; margin-bottom: 0.25rem;">OUTCOME</div>
+                        <div style="font-size: 0.85rem; color: var(--text);">
+                            <strong>Automated reporting</strong> • Glass Box SQL • Compliance-ready
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 2rem;">
+        <a href="/sql-sandbox" style="display: inline-flex; align-items: center; gap: 0.5rem; background: #10b981; color: white; padding: 0.875rem 1.75rem; border-radius: 8px; text-decoration: none; font-weight: 600; transition: all 0.2s;">
+            Try SQL Sandbox →
+        </a>
+    </div>
+</div>
+{% endblock %}

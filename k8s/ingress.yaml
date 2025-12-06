@@ -1,0 +1,15 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: megadoc-ingress
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    networking.gke.io/managed-certificates: "megadoc-cert"
+    networking.gke.io/v1beta1.FrontendConfig: "megadoc-frontend-config"
+spec:
+  defaultBackend:
+    service:
+      name: megadoc-service
+      port:
+        number: 80

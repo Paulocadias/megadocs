@@ -1,0 +1,922 @@
+{% extends "base.html" %}
+
+{% block title %}Methodology - Multi-Modal AI Platform{% endblock %}
+
+{% block styles %}
+<style>
+    /* Page-specific accent only - inherit global CSS vars from style.css */
+    .methodology-accent {
+        --accent: #f59e0b;
+    }
+
+    /* Hero Section - match Architecture page styling */
+    .methodology-hero {
+        text-align: center;
+        margin-bottom: 4rem;
+    }
+
+    .methodology-hero h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 1rem;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .methodology-hero p {
+        font-size: 1.1rem;
+        color: var(--text-light);
+        max-width: 1000px;
+        margin: 0 auto;
+        line-height: 1.6;
+    }
+
+    /* Badge styling - match global .badge class */
+    .methodology-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        color: var(--primary);
+        padding: 0.5rem 1.25rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
+    }
+
+    /* Utility classes */
+    .max-w-text {
+        max-width: 1000px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .eyebrow-label {
+        display: inline-block;
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        color: var(--primary);
+        padding: 0.4rem 1rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        margin-bottom: 1rem;
+    }
+
+    .section-divider {
+        height: 1px;
+        background: var(--border);
+        margin: 3rem 0;
+    }
+
+    /* Lifecycle Diagram - Horizontal Grid */
+    .lifecycle-diagram {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 1rem;
+        margin: 3rem 0;
+    }
+
+    .lifecycle-stage {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.25rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100%;
+    }
+
+    .lifecycle-stage:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        border-color: var(--primary);
+    }
+
+    .lifecycle-stage-icon {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .lifecycle-stage-number {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-light);
+        margin-bottom: 0.25rem;
+    }
+
+    .lifecycle-stage-title {
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 0.25rem;
+        font-size: 1rem;
+    }
+
+    .lifecycle-stage-desc {
+        font-size: 0.8rem;
+        color: var(--text-light);
+        line-height: 1.3;
+    }
+
+    .lifecycle-arrow {
+        display: none;
+        /* Hide arrows in grid layout */
+    }
+
+    /* Quality Gates */
+    .quality-list {
+        list-style: none;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+        gap: 1.5rem;
+        margin: 2rem 0;
+    }
+
+    .quality-list li {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.25rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        transition: all 0.2s;
+    }
+
+    .quality-list li:hover {
+        border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .list-icon {
+        font-size: 1.25rem;
+        background: #f0f9ff;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        flex-shrink: 0;
+    }
+
+    .list-content {
+        font-size: 0.95rem;
+        color: var(--text-light);
+        line-height: 1.6;
+    }
+
+    .list-content strong {
+        color: var(--text);
+        display: block;
+        /* Ensure title is on its own line */
+        margin-bottom: 0.25rem;
+    }
+
+    /* Security Gates */
+    .gates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        margin: 3rem 0;
+    }
+
+    .gate-card {
+        background: white;
+        border: 1px solid var(--border);
+        border-left: 4px solid transparent;
+        border-radius: 12px;
+        padding: 2rem;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.3s ease;
+    }
+
+    .gate-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+    }
+
+    .gate-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+        display: block;
+    }
+
+    .gate-content h3 {
+        font-size: 1.25rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .gate-content p {
+        font-size: 0.95rem;
+        margin: 0;
+    }
+
+    /* Callout Box */
+    .callout-box {
+        background: #fffbeb;
+        border: 1px solid #fcd34d;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .callout-title {
+        font-weight: 700;
+        color: #92400e;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .callout-box p {
+        margin: 0;
+        color: var(--text-light);
+        font-size: 0.95rem;
+    }
+
+    /* Cost Optimization */
+    .cost-optimization-section {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 3rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .tier-pyramid {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin: 2rem 0;
+    }
+
+    .tier-item {
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+        transition: all 0.3s;
+    }
+
+    .tier-item:hover {
+        transform: translateX(4px);
+        background: white;
+        border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .tier-item.tier-1 {
+        border-left: 4px solid #10b981;
+    }
+
+    .tier-item.tier-2 {
+        border-left: 4px solid #3b82f6;
+    }
+
+    .tier-item.tier-3 {
+        border-left: 4px solid #8b5cf6;
+    }
+
+    .tier-icon {
+        font-size: 1.5rem;
+    }
+
+    .tier-title {
+        font-weight: 700;
+        font-size: 1rem;
+        color: var(--text);
+    }
+
+    .tier-desc {
+        font-size: 0.9rem;
+        color: var(--text-light);
+    }
+
+    .tier-cost {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-light);
+        margin-left: auto;
+        background: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+    }
+
+    /* Flywheel */
+    .flywheel-cycle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding: 1.5rem 0;
+    }
+
+    .flywheel-step {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.25rem;
+        min-width: 140px;
+        flex: 1;
+        text-align: center;
+        transition: all 0.3s;
+    }
+
+    .flywheel-step:hover {
+        transform: translateY(-4px);
+        border-color: var(--primary);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.08);
+    }
+
+    .flywheel-step-icon {
+        font-size: 1.75rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .flywheel-step-title {
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin-bottom: 0.25rem;
+    }
+
+    .flywheel-step-desc {
+        font-size: 0.8rem;
+        color: var(--text-light);
+        line-height: 1.3;
+    }
+
+    .flywheel-arrow {
+        font-size: 1.25rem;
+        color: var(--border);
+        flex-shrink: 0;
+    }
+
+    /* Team Rituals Grid */
+    .rituals-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .ritual-card {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 2rem;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        transition: all 0.2s;
+    }
+
+    .ritual-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+    }
+
+    .ritual-card h3 {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+        color: var(--text);
+        text-align: left;
+    }
+
+    .ritual-card p {
+        color: var(--text-light);
+        line-height: 1.6;
+        margin: 0;
+        font-size: 0.95rem;
+        flex: 1;
+    }
+
+    @media (max-width: 768px) {
+        .lifecycle-diagram {
+            grid-template-columns: 1fr;
+            /* Stack on mobile */
+        }
+
+        .flywheel-cycle {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .flywheel-arrow {
+            transform: rotate(90deg);
+            align-self: center;
+            margin: 0.5rem 0;
+        }
+
+        .tier-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .tier-cost {
+            margin-left: 0;
+        }
+
+        .quality-list {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="methodology-hero">
+    <span class="methodology-badge">ENGINEERING LEADERSHIP</span>
+    <h1>AI Production Methodology</h1>
+    <div class="max-w-text">
+        <p>My standardized framework for moving AI from research to production reliably. Focused on Risk, Quality, and
+            Process.</p>
+        <p style="font-size: 0.95rem; color: var(--text-light); margin-top: 1rem; font-style: italic;">
+            This page documents the methodology I use to take AI systems from research to production in a repeatable
+            way.
+            I use this framework when leading AI initiatives in different domains, adapting it for teams building
+            production AI systems.
+        </p>
+    </div>
+</section>
+
+<!-- Sticky Sub-Navigation -->
+<div class="sticky-top bg-white border-bottom shadow-sm mb-4 py-2" style="top: 0; z-index: 1000;">
+    <div class="container d-flex justify-content-center gap-4 flex-wrap">
+        <a href="#lifecycle" class="text-decoration-none text-secondary fw-bold"
+            style="font-size: 0.9rem;">Lifecycle</a>
+        <a href="#quality-gates" class="text-decoration-none text-secondary fw-bold" style="font-size: 0.9rem;">Quality
+            Gates</a>
+        <a href="#security" class="text-decoration-none text-secondary fw-bold" style="font-size: 0.9rem;">Security</a>
+        <a href="#economics" class="text-decoration-none text-secondary fw-bold"
+            style="font-size: 0.9rem;">Economics</a>
+        <a href="#flywheel" class="text-decoration-none text-secondary fw-bold" style="font-size: 0.9rem;">Flywheel</a>
+        <a href="#rituals" class="text-decoration-none text-secondary fw-bold" style="font-size: 0.9rem;">Rituals</a>
+    </div>
+</div>
+
+<!-- Core Competencies -->
+<section id="competencies" style="margin-bottom: 3rem;">
+    <span class="eyebrow-label">Technical Focus</span>
+    <h2 style="text-align: center; margin-bottom: 2rem;">Core Competencies</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem;">
+        <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; border-left: 4px solid var(--primary);">
+            <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--text);">AI/ML Systems</h3>
+            <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.9rem; color: var(--text-light);">
+                <li style="padding: 0.35rem 0;">RAG Pipeline Architecture</li>
+                <li style="padding: 0.35rem 0;">Multi-Model Orchestration</li>
+                <li style="padding: 0.35rem 0;">Vector Database Design</li>
+                <li style="padding: 0.35rem 0;">LLM Cost Optimization</li>
+            </ul>
+        </div>
+        <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; border-left: 4px solid #10b981;">
+            <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--text);">Enterprise Architecture</h3>
+            <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.9rem; color: var(--text-light);">
+                <li style="padding: 0.35rem 0;">Microservices Design</li>
+                <li style="padding: 0.35rem 0;">API Gateway Patterns</li>
+                <li style="padding: 0.35rem 0;">Event-Driven Systems</li>
+                <li style="padding: 0.35rem 0;">Cloud-Native Design</li>
+            </ul>
+        </div>
+        <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; border-left: 4px solid #8b5cf6;">
+            <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--text);">DevSecOps</h3>
+            <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.9rem; color: var(--text-light);">
+                <li style="padding: 0.35rem 0;">CI/CD Pipeline Design</li>
+                <li style="padding: 0.35rem 0;">Infrastructure as Code</li>
+                <li style="padding: 0.35rem 0;">Security Automation</li>
+                <li style="padding: 0.35rem 0;">Zero-Trust Architecture</li>
+            </ul>
+        </div>
+        <div style="background: white; border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; border-left: 4px solid #f59e0b;">
+            <h3 style="font-size: 1rem; margin-bottom: 0.75rem; color: var(--text);">Technical Leadership</h3>
+            <ul style="list-style: none; padding: 0; margin: 0; font-size: 0.9rem; color: var(--text-light);">
+                <li style="padding: 0.35rem 0;">Architecture Decision Records</li>
+                <li style="padding: 0.35rem 0;">Technical Documentation</li>
+                <li style="padding: 0.35rem 0;">Code Review Standards</li>
+                <li style="padding: 0.35rem 0;">Team Mentorship</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- Design Principles -->
+<section id="principles" style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; border-radius: 16px; padding: 3rem; margin-bottom: 3rem;">
+    <h2 style="text-align: center; margin-bottom: 2rem; color: white;">Design Principles</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+        <div style="text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.05); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);">
+            <div style="font-size: 2rem; margin-bottom: 0.75rem;">🔒</div>
+            <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: white;">Privacy-First</h3>
+            <p style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.7); margin: 0;">Zero data retention. Ephemeral processing.</p>
+        </div>
+        <div style="text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.05); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);">
+            <div style="font-size: 2rem; margin-bottom: 0.75rem;">💰</div>
+            <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: white;">Cost-Conscious</h3>
+            <p style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.7); margin: 0;">Smart routing and tiered models.</p>
+        </div>
+        <div style="text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.05); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);">
+            <div style="font-size: 2rem; margin-bottom: 0.75rem;">📡</div>
+            <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: white;">Observable</h3>
+            <p style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.7); margin: 0;">X-Ray tracing, metrics built-in.</p>
+        </div>
+        <div style="text-align: center; padding: 1rem; background: rgba(255, 255, 255, 0.05); border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1);">
+            <div style="font-size: 2rem; margin-bottom: 0.75rem;">🏗️</div>
+            <h3 style="font-size: 1rem; margin-bottom: 0.5rem; color: white;">Production-Grade</h3>
+            <p style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.7); margin: 0;">Security gates and compliance ready.</p>
+        </div>
+    </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- AI Delivery Lifecycle -->
+<section id="lifecycle" class="lifecycle-section">
+    <span class="eyebrow-label">Lifecycle</span>
+    <h2>My AI Delivery Lifecycle</h2>
+    <div class="max-w-text">
+        <p style="text-align: center; font-size: 1rem; color: var(--text-light); margin-bottom: 2rem;">
+            I use a 5-phase lifecycle to ship production AI systems with predictable quality and minimal risk.
+        </p>
+    </div>
+    <div class="lifecycle-diagram">
+        <div class="lifecycle-stage discovery">
+            <div class="lifecycle-stage-icon">🧭</div>
+            <div class="lifecycle-stage-number">Phase 1</div>
+            <div class="lifecycle-stage-title">Discovery</div>
+            <div class="lifecycle-stage-desc">Problem Definition & Data Audit</div>
+        </div>
+        <div class="lifecycle-stage prototype">
+            <div class="lifecycle-stage-icon">🧪</div>
+            <div class="lifecycle-stage-number">Phase 2</div>
+            <div class="lifecycle-stage-title">Prototyping</div>
+            <div class="lifecycle-stage-desc">Notebook-driven PoC (Evaluation First)</div>
+        </div>
+        <div class="lifecycle-stage engineering">
+            <div class="lifecycle-stage-icon">🏗️</div>
+            <div class="lifecycle-stage-number">Phase 3</div>
+            <div class="lifecycle-stage-title">Engineering</div>
+            <div class="lifecycle-stage-desc">Modularization & API Contract Definition</div>
+        </div>
+        <div class="lifecycle-stage deployment">
+            <div class="lifecycle-stage-icon">🚀</div>
+            <div class="lifecycle-stage-number">Phase 4</div>
+            <div class="lifecycle-stage-title">Deployment</div>
+            <div class="lifecycle-stage-desc">Blue/Green Release via CI/CD</div>
+        </div>
+        <div class="lifecycle-stage observability">
+            <div class="lifecycle-stage-icon">📈</div>
+            <div class="lifecycle-stage-number">Phase 5</div>
+            <div class="lifecycle-stage-title">Observability</div>
+            <div class="lifecycle-stage-desc">Drift Detection & Feedback Loops</div>
+        </div>
+    </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- Quality Gates -->
+<section id="quality-gates" class="quality-gates">
+    <span class="eyebrow-label">Risk & Quality</span>
+    <h2>Quality Gates: Definition of Done</h2>
+    <div class="max-w-text">
+        <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">
+            Every PR must pass these automated checks before merge; these gates are non‑negotiable in teams I lead.
+        </p>
+    </div>
+
+    <ul class="quality-list">
+        <li>
+            <span class="list-icon">✅</span>
+            <div class="list-content">
+                <strong>RAGAS Evaluation Score > 0.8</strong> – Context Precision, Faithfulness, and Answer Relevance
+                must exceed threshold; automated regression tests against a golden dataset.
+            </div>
+        </li>
+        <li>
+            <span class="list-icon">🛡️</span>
+            <div class="list-content">
+                <strong>Security Scan (Snyk/Bandit)</strong> – Static analysis for vulnerabilities, dependency risks,
+                and OWASP Top 10 coverage. Zero high-severity findings allowed.
+            </div>
+        </li>
+        <li>
+            <span class="list-icon">⚡</span>
+            <div class="list-content">
+                <strong>Latency Budget Check (<500ms P95)</strong> – Performance regression tests ensure P95 latency
+                        remains under SLA. Automated load testing in CI/CD pipeline.
+            </div>
+        </li>
+        <li>
+            <span class="list-icon">🔒</span>
+            <div class="list-content">
+                <strong>GDPR/PII Scrub Verification</strong> – Automated PII detection and redaction validation. Ensures
+                compliance with data protection regulations before deployment.
+            </div>
+        </li>
+        <li>
+            <span class="list-icon">📊</span>
+            <div class="list-content">
+                <strong>Observability & Logging</strong> – Traces, logs, and metrics configured; dashboards and alerts
+                in place before rollout.
+            </div>
+        </li>
+    </ul>
+
+    <div class="callout-box">
+        <div class="callout-title"><span>⚠️</span> Non-Negotiable Standard</div>
+        <p>I do not approve deployments that bypass these gates. In my experience, skipping quality checks for speed
+            always results in slower delivery due to rework and production incidents.</p>
+    </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- Production AI Security: The 3-Layer Guardrail -->
+<section id="security" class="security-section">
+    <span class="eyebrow-label">Security Architecture</span>
+    <h2>Production AI Security: The 3-Layer Guardrail</h2>
+    <div class="max-w-text">
+        <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">
+            I apply a three-layer guardrail architecture in production: input gatekeeper, model strategy, and output
+            auditor.
+        </p>
+    </div>
+
+    <div class="gates-grid">
+        <div class="gate-card" style="border-left-color: #3b82f6;">
+            <span class="gate-icon">🛡️</span>
+            <div class="gate-content">
+                <h3>Layer 1: Input Gatekeeper</h3>
+                <p><strong>Pre-Inference Security.</strong> Heuristic analysis to detect "Jailbreak" patterns and
+                    Zero-shot classification to reject out-of-scope queries.</p>
+            </div>
+        </div>
+
+        <div class="gate-card" style="border-left-color: #8b5cf6;">
+            <span class="gate-icon">🧠</span>
+            <div class="gate-content">
+                <h3>Layer 2: Model Strategy</h3>
+                <p><strong>Hybrid Inference Architecture.</strong> Vendor-agnostic design with OpenRouter gateway.
+                    Fine-tuning for style, RAG for facts.</p>
+            </div>
+        </div>
+
+        <div class="gate-card" style="border-left-color: #10b981;">
+            <span class="gate-icon">⚖️</span>
+            <div class="gate-content">
+                <h3>Layer 3: Output Auditor</h3>
+                <p><strong>Post-Inference Validation.</strong> Self-consistency checks to prevent hallucination and JSON
+                    Schema Validation for structured output.</p>
+            </div>
+        </div>
+    </div>
+
+    <p
+        style="text-align: center; font-size: 0.85rem; color: var(--text-light); margin-top: 1.5rem; font-style: italic;">
+        Three layers of defense ensure production AI systems are secure, accurate, and compliant. No single point of
+        failure.
+    </p>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- Data Sovereignty & Ephemeral Computing (NEW) -->
+<section id="data-sovereignty" class="security-section"
+    style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border-radius: 16px; padding: 3rem; margin-bottom: 2rem;">
+    <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+        <span class="eyebrow-label" style="background: #10b981; color: white;">Data Handling</span>
+        <span
+            style="background: #10b981; color: white; font-size: 0.65rem; padding: 0.15rem 0.5rem; border-radius: 9999px; font-weight: 700;">NEW</span>
+    </div>
+    <h2 style="text-align: center; margin-bottom: 1rem;">🔐 Data Sovereignty & Ephemeral Computing</h2>
+    <div class="max-w-text">
+        <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">
+            The SQL Sandbox demonstrates our commitment to zero-trust data handling principles across the platform.
+        </p>
+    </div>
+
+    <div class="gates-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="gate-card" style="border-left-color: #10b981; background: white;">
+            <span class="gate-icon">🗑️</span>
+            <div class="gate-content">
+                <h3>Ephemeral-First Architecture</h3>
+                <p>All uploaded databases exist in-memory or temp storage. Automatic cleanup after 30-minute session
+                    TTL. No filesystem persistence beyond session scope.</p>
+            </div>
+        </div>
+
+        <div class="gate-card" style="border-left-color: #3b82f6; background: white;">
+            <span class="gate-icon">🔒</span>
+            <div class="gate-content">
+                <h3>Read-Only Enforcement</h3>
+                <p>SQLite connections use URI mode flag: <code
+                        style="background: #f1f5f9; padding: 0.1rem 0.3rem; border-radius: 3px;">?mode=ro</code>. Agent
+                    system prompt blocks DML operations. Pre-execution SQL validation layer.</p>
+            </div>
+        </div>
+
+        <div class="gate-card" style="border-left-color: #8b5cf6; background: white;">
+            <span class="gate-icon">📂</span>
+            <div class="gate-content">
+                <h3>Universal Ingestion Strategy</h3>
+                <p><strong>Native SQLite:</strong> Direct connection. <strong>SQL Dumps:</strong> Runtime rehydration
+                    via executescript(). <strong>Spreadsheets:</strong> Pandas normalization → SQLite translation.</p>
+            </div>
+        </div>
+
+        <div class="gate-card" style="border-left-color: #f59e0b; background: white;">
+            <span class="gate-icon">🤖</span>
+            <div class="gate-content">
+                <h3>Agentic Reasoning Layer</h3>
+                <p>LangChain OpenAI Tools agent (temperature=0). Auto-correction on SQL errors. Schema-aware query
+                    generation. Transparent SQL exposure (Glass Box AI).</p>
+            </div>
+        </div>
+    </div>
+
+    <p
+        style="text-align: center; font-size: 0.85rem; color: var(--text-light); margin-top: 1.5rem; font-style: italic;">
+        <a href="/sql-sandbox" style="color: #10b981; text-decoration: none; font-weight: 600;">Try the SQL Sandbox
+            →</a> to experience ephemeral data processing in action.
+    </p>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- Unit Economics & Cost Optimization -->
+<section id="economics" class="cost-optimization-section">
+    <span class="eyebrow-label">Unit Economics</span>
+    <h2>Tiered Inference Strategy (Cost Control)</h2>
+    <div class="max-w-text">
+        <p style="color: var(--text-light); margin-bottom: 2rem; line-height: 1.6;">
+            In Enterprise SaaS, unchecked inference costs kill margins. I architect systems with a 'Router Pattern' to
+            optimize unit economics:
+        </p>
+    </div>
+    <div class="tier-pyramid">
+        <div class="tier-item tier-1">
+            <div class="tier-icon">⚡</div>
+            <div class="tier-content">
+                <div class="tier-title">Tier 1 (The Router)</div>
+                <div class="tier-desc">Zero-Cost Logic. RegEx/Keyword matching for greetings, navigation, and simple
+                    FAQs.</div>
+            </div>
+            <div class="tier-cost">Cost: negligible (no LLM tokens)</div>
+        </div>
+        <div class="tier-item tier-2">
+            <div class="tier-icon">🚀</div>
+            <div class="tier-content">
+                <div class="tier-title">Tier 2 (The Workhorse)</div>
+                <div class="tier-desc">Economy Models. Gemini Flash 2.0 / Llama 3.2 for RAG, Summarization, and
+                    Extraction.</div>
+            </div>
+            <div class="tier-cost">Cost: Low</div>
+        </div>
+        <div class="tier-item tier-3">
+            <div class="tier-icon">🧠</div>
+            <div class="tier-content">
+                <div class="tier-title">Tier 3 (The Expert)</div>
+                <div class="tier-desc">Reasoning Models. DeepSeek R1 / GPT-4o for complex diagnostics and root cause
+                    analysis.</div>
+            </div>
+            <div class="tier-cost">Cost: High</div>
+        </div>
+    </div>
+    <div class="max-w-text">
+        <p style="color: var(--text-light); margin-top: 1.5rem; font-size: 0.9rem; font-style: italic;">
+            <strong>Impact:</strong> In practice, this pattern can reduce blended token cost by up to ~85% compared to a
+            naive 'GPT‑4 for everything' approach.
+        </p>
+    </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- The Data Flywheel (RLHF) -->
+<section id="flywheel" class="flywheel-section">
+    <span class="eyebrow-label">Continuous Improvement</span>
+    <h2>The Data Flywheel</h2>
+    <div class="max-w-text">
+        <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">
+            I design feedback loops so models and RAG pipelines improve continuously instead of stagnating after
+            deployment.
+        </p>
+    </div>
+    <div class="flywheel-cycle">
+        <div class="flywheel-step">
+            <div class="flywheel-step-icon">📥</div>
+            <div class="flywheel-step-title">Input</div>
+            <div class="flywheel-step-desc">User Feedback & Correction Data</div>
+        </div>
+        <div class="flywheel-arrow">→</div>
+        <div class="flywheel-step">
+            <div class="flywheel-step-icon">⚙️</div>
+            <div class="flywheel-step-title">Process</div>
+            <div class="flywheel-step-desc">Automated RAGAS Evaluation + Human Review</div>
+        </div>
+        <div class="flywheel-arrow">→</div>
+        <div class="flywheel-step">
+            <div class="flywheel-step-icon">📤</div>
+            <div class="flywheel-step-title">Output</div>
+            <div class="flywheel-step-desc">Fine-tuned LoRA adapters & Improved Retrieval Rankings</div>
+        </div>
+        <div class="flywheel-arrow">→</div>
+        <div class="flywheel-step">
+            <div class="flywheel-step-icon">🔄</div>
+            <div class="flywheel-step-title">Loop</div>
+            <div class="flywheel-step-desc">Continuous refinement cycle</div>
+        </div>
+    </div>
+    <p style="color: var(--text-light); margin-top: 1.5rem; font-size: 0.9rem; font-style: italic;">
+        I use this golden dataset as input for future fine-tuning, prompt/RAG tuning, and regression evaluations.
+    </p>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- Team Rituals -->
+<section id="rituals" class="team-rituals">
+    <span class="eyebrow-label">Team Leadership</span>
+    <h2>How I Run Engineering Teams</h2>
+    <div class="max-w-text">
+        <p style="text-align: center; color: var(--text-light); margin-bottom: 1.5rem;">
+            My leadership focus is building high-performing, psychologically safe teams through structured rituals and
+            continuous learning.
+        </p>
+        <p style="text-align: center; color: var(--text-light); margin-bottom: 3rem;">
+            I lead by example in using AI as a copilot, not a replacement. The goal is to automate boring, repetitive
+            work so people can focus on creative problem solving, decision-making, and deep collaboration. I
+            deliberately design workflows where AI handles low-value tasks (summaries, boilerplate, data prep) and
+            humans own judgment, strategy, and relationships.
+        </p>
+    </div>
+
+    <div class="rituals-grid">
+        <div class="ritual-card">
+            <h3><span>🧩</span> Human-Centered AI Adoption</h3>
+            <ul
+                style="padding-left: 1.2rem; margin: 0; color: var(--text-light); font-size: 0.95rem; line-height: 1.6;">
+                <li style="margin-bottom: 0.5rem;">Use AI tools in my own daily work first, then share concrete patterns
+                    with the team ('lead by example').</li>
+                <li style="margin-bottom: 0.5rem;">Co-design automations with engineers and domain experts so AI
+                    upgrades their work conditions instead of threatening their roles.</li>
+                <li>Continuously look for manual, low-value steps to automate, freeing time for design, experimentation,
+                    and learning.</li>
+            </ul>
+        </div>
+
+        <div class="ritual-card">
+            <h3><span>📋</span> RFC-Driven Architecture</h3>
+            <p>All significant architectural changes start with a Request for Comments (RFC). This ensures decisions are
+                made collaboratively and prevents technical debt.</p>
+        </div>
+
+        <div class="ritual-card">
+            <h3><span>🔍</span> Blameless Post-Mortems</h3>
+            <p>When incidents occur, I focus on system improvements, not blame. Post-mortems produce concrete action
+                items and runbooks. This builds psychological safety and resilience.</p>
+        </div>
+
+        <div class="ritual-card">
+            <h3><span>🎯</span> T-Shaped Skills</h3>
+            <p>I encourage engineers to have deep expertise in one area while maintaining broad knowledge. This is
+                achieved through pair programming and cross-team collaboration, reducing bus factor.</p>
+        </div>
+    </div>
+
+    <div class="callout-box">
+        <div class="callout-title"><span>💡</span> How I Use RFCs in Practice</div>
+        <p>I require a "Problem Statement" and "Alternatives Considered" section in every RFC. This forces us to
+            validate the problem before jumping to solutions and explicitly evaluate trade-offs.</p>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+</script>
+{% endblock %}

@@ -1,0 +1,38 @@
+<div class="site-header-wrapper">
+    <header class="site-header">
+        <a href="/" class="logo-link">
+            <img src="/static/logo.png" alt="" style="height: 32px; width: 32px; margin-right: 0.5rem;">
+            <span class="logo-text">MegaDoc</span>
+        </a>
+        <nav style="display: flex; align-items: center;">
+            <!-- Demo Apps -->
+            <div
+                style="display: flex; align-items: center; background: rgba(37, 99, 235, 0.05); padding: 0.25rem 0.75rem; border-radius: 8px; border: 1px solid rgba(37, 99, 235, 0.1);">
+                <a href="/convert" {% if active_page=='convert' %} class="active" {% endif %}
+                    style="font-weight: 600; color: var(--primary);">Ingest</a>
+                <span style="color: var(--border); margin: 0 0.5rem;">|</span>
+                <a href="/rag" {% if active_page=='rag' %} class="active" {% endif %}
+                    style="font-weight: 600; color: var(--primary);">RAG Chat</a>
+                <span style="color: var(--border); margin: 0 0.5rem;">|</span>
+                <a href="/sql-sandbox" {% if active_page=='sql-sandbox' %} class="active" {% endif %}
+                    style="font-weight: 600; color: var(--primary); display: inline-flex; align-items: center; gap: 0.35rem;">
+                    SQL Sandbox
+                    <span style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); color: white; font-size: 0.6rem; padding: 0.15rem 0.4rem; border-radius: 9999px; font-weight: 700; letter-spacing: 0.03em;">NEW</span>
+                </a>
+            </div>
+
+            <!-- Separator -->
+            <div style="height: 24px; width: 1px; background: var(--border); margin: 0 1.5rem;"></div>
+
+            <!-- Information Pages -->
+            <div style="display: flex; align-items: center; gap: 1.5rem;">
+                <a href="/architecture" {% if active_page=='architecture' %} class="active" {% endif %}>Architecture</a>
+                <a href="/use-cases" {% if active_page=='use-cases' %} class="active" {% endif %}>Case Studies</a>
+                <a href="/methodology" {% if active_page=='methodology' %} class="active" {% endif %}>Methodology</a>
+                <a href="/stats" {% if active_page=='stats' %} class="active" {% endif %}>Stats</a>
+                <a href="/api/docs" {% if active_page=='api' %} class="active" {% endif %}>API</a>
+                <a href="/contact" {% if active_page=='contact' %} class="active" {% endif %}>Contact</a>
+            </div>
+        </nav>
+    </header>
+</div>

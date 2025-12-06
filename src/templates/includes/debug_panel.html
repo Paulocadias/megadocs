@@ -1,0 +1,312 @@
+<!-- X-Ray Debug Panel - Collapsible telemetry view for chat responses -->
+<style>
+.debug-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #1e1e1e;
+    border-top: 2px solid #3c3c3c;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    z-index: 9998;
+    transition: transform 0.3s ease;
+}
+
+.debug-panel.collapsed {
+    transform: translateY(calc(100% - 32px));
+}
+
+.debug-toggle {
+    position: absolute;
+    top: -32px;
+    right: 20px;
+    background: #1e1e1e;
+    border: 1px solid #3c3c3c;
+    border-bottom: none;
+    border-radius: 6px 6px 0 0;
+    color: #9cdcfe;
+    padding: 6px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.debug-toggle:hover {
+    background: #2d2d2d;
+}
+
+.debug-toggle i {
+    font-size: 14px;
+}
+
+.debug-toggle .badge {
+    background: #4ec9b0;
+    color: #1e1e1e;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 10px;
+}
+
+.debug-content {
+    padding: 12px 20px;
+    max-height: 200px;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.debug-section {
+    background: #252526;
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+
+.debug-section-title {
+    color: #569cd6;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.debug-section-title i {
+    font-size: 12px;
+}
+
+.debug-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.debug-label {
+    color: #9cdcfe;
+}
+
+.debug-value {
+    color: #ce9178;
+    font-weight: 500;
+}
+
+.debug-value.success {
+    color: #4ec9b0;
+}
+
+.debug-value.warning {
+    color: #dcdcaa;
+}
+
+.debug-value.error {
+    color: #f14c4c;
+}
+
+/* Hidden by default - shown via JavaScript when debug data available */
+.debug-panel.hidden {
+    display: none;
+}
+</style>
+
+<div id="debug-panel" class="debug-panel collapsed hidden">
+    <button class="debug-toggle" onclick="toggleDebugPanel()">
+        <i class="bi bi-speedometer2"></i>
+        <span>Performance Metrics</span>
+        <span id="debug-latency-badge" class="badge">--ms</span>
+    </button>
+
+    <div class="debug-content">
+        <!-- Latency Section -->
+        <div class="debug-section">
+            <div class="debug-section-title">
+                <i class="bi bi-speedometer2"></i> Latency
+            </div>
+            <div class="debug-item">
+                <span class="debug-label">TTFT</span>
+                <span id="debug-ttft" class="debug-value">--</span>
+            </div>
+            <div class="debug-item">
+                <span class="debug-label">Gateway</span>
+                <span id="debug-gateway" class="debug-value">--</span>
+            </div>
+            <div class="debug-item">
+                <span class="debug-label">Total</span>
+                <span id="debug-total" class="debug-value">--</span>
+            </div>
+        </div>
+
+        <!-- Tokens Section -->
+        <div class="debug-section">
+            <div class="debug-section-title">
+                <i class="bi bi-hash"></i> Tokens
+            </div>
+            <div class="debug-item">
+                <span class="debug-label">Input</span>
+                <span id="debug-tokens-in" class="debug-value">--</span>
+            </div>
+            <div class="debug-item">
+                <span class="debug-label">Output</span>
+                <span id="debug-tokens-out" class="debug-value">--</span>
+            </div>
+            <div class="debug-item">
+                <span class="debug-label">Total</span>
+                <span id="debug-tokens-total" class="debug-value">--</span>
+            </div>
+        </div>
+
+        <!-- Model Section -->
+        <div class="debug-section">
+            <div class="debug-section-title">
+                <i class="bi bi-cpu"></i> Model
+            </div>
+            <div class="debug-item">
+                <span class="debug-label">Name</span>
+                <span id="debug-model" class="debug-value">--</span>
+            </div>
+            <div class="debug-item">
+                <span class="debug-label">Domain</span>
+                <span id="debug-domain" class="debug-value">--</span>
+            </div>
+            <div class="debug-item">
+                <span class="debug-label">Cost</span>
+                <span id="debug-cost" class="debug-value">--</span>
+            </div>
+        </div>
+
+        <!-- Request Section -->
+        <div class="debug-section">
+            <div class="debug-section-title">
+                <i class="bi bi-journal-code"></i> Request
+            </div>
+            <div class="debug-item">
+                <span class="debug-label">ID</span>
+                <span id="debug-request-id" class="debug-value">--</span>
+            </div>
+            <div class="debug-item">
+                <span class="debug-label">Context</span>
+                <span id="debug-context-len" class="debug-value">--</span>
+            </div>
+            <div class="debug-item">
+                <span class="debug-label">Time</span>
+                <span id="debug-timestamp" class="debug-value">--</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Debug Panel State - use var to allow pages to override initialization
+// Pages can set debugPanelEnabled before including this file
+if (typeof debugPanelEnabled === 'undefined') {
+    var debugPanelEnabled = false;
+}
+
+function toggleDebugPanel() {
+    const panel = document.getElementById('debug-panel');
+    panel.classList.toggle('collapsed');
+}
+
+function enableDebugMode() {
+    debugPanelEnabled = true;
+    // Add ?debug=1 to API requests
+    console.log('[X-Ray] Debug mode enabled');
+}
+
+function disableDebugMode() {
+    debugPanelEnabled = false;
+    const panel = document.getElementById('debug-panel');
+    panel.classList.add('hidden');
+    console.log('[X-Ray] Debug mode disabled');
+}
+
+function updateDebugPanel(debugData) {
+    if (!debugData) return;
+
+    const panel = document.getElementById('debug-panel');
+    panel.classList.remove('hidden');
+
+    // Update latency badge
+    const latencyBadge = document.getElementById('debug-latency-badge');
+    latencyBadge.textContent = `${debugData.total_latency_ms || 0}ms`;
+
+    // Update latency section
+    document.getElementById('debug-ttft').textContent = formatMs(debugData.ttft_ms);
+    document.getElementById('debug-gateway').textContent = formatMs(debugData.gateway_latency_ms);
+    document.getElementById('debug-total').textContent = formatMs(debugData.total_latency_ms);
+
+    // Color-code latency
+    colorCodeLatency('debug-total', debugData.total_latency_ms);
+
+    // Update tokens section
+    document.getElementById('debug-tokens-in').textContent = formatNumber(debugData.tokens_input);
+    document.getElementById('debug-tokens-out').textContent = formatNumber(debugData.tokens_output);
+    document.getElementById('debug-tokens-total').textContent = formatNumber(debugData.tokens_total);
+
+    // Update model section
+    document.getElementById('debug-model').textContent = truncate(debugData.model || '--', 20);
+    document.getElementById('debug-domain').textContent = debugData.domain || 'general';
+    document.getElementById('debug-cost').textContent = `$${(debugData.estimated_cost || 0).toFixed(4)}`;
+
+    // Update request section
+    document.getElementById('debug-request-id').textContent = debugData.request_id || '--';
+    document.getElementById('debug-context-len').textContent = formatBytes(debugData.context_length);
+    document.getElementById('debug-timestamp').textContent = formatTime(debugData.timestamp);
+}
+
+function formatMs(ms) {
+    if (ms === null || ms === undefined) return '--';
+    if (ms < 1000) return `${ms}ms`;
+    return `${(ms / 1000).toFixed(2)}s`;
+}
+
+function formatNumber(num) {
+    if (num === null || num === undefined || num === 0) return '--';
+    return num.toLocaleString();
+}
+
+function formatBytes(bytes) {
+    if (!bytes) return '--';
+    if (bytes < 1024) return `${bytes} chars`;
+    return `${(bytes / 1024).toFixed(1)}K chars`;
+}
+
+function formatTime(timestamp) {
+    if (!timestamp) return '--';
+    try {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString();
+    } catch {
+        return '--';
+    }
+}
+
+function truncate(str, len) {
+    if (!str) return '--';
+    return str.length > len ? str.substring(0, len) + '...' : str;
+}
+
+function colorCodeLatency(elementId, ms) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    el.classList.remove('success', 'warning', 'error');
+    if (ms < 2000) {
+        el.classList.add('success');
+    } else if (ms < 5000) {
+        el.classList.add('warning');
+    } else {
+        el.classList.add('error');
+    }
+}
+
+// Check URL for debug flag on load
+if (window.location.search.includes('debug=1')) {
+    enableDebugMode();
+}
+</script>

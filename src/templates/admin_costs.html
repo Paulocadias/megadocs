@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Cost Optimization - MegaDoc Admin{% endblock %}
+
+{% block content %}
+<div class="docs-page">
+    <section class="hero-section" style="text-align: center; padding: 3rem 0;">
+        <span class="badge">ADMIN DASHBOARD</span>
+        <h1 style="font-size: 2.5rem; margin: 1rem 0;">Cost Optimization</h1>
+        <p class="subtitle">Resource usage tracking and ROI analysis</p>
+    </section>
+
+    <div style="max-width: 1000px; margin: 0 auto;">
+
+        <!-- ROI Calculator -->
+        <div class="content-section" style="margin-bottom: 2rem;">
+            <h2><i class="fas fa-calculator"></i> ROI Calculator</h2>
+            <p style="color: var(--text-light); margin-bottom: 1.5rem;">Estimated savings compared to manual document
+                processing.</p>
+
+            <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <div class="stat-card">
+                    <div class="stat-label">DOCUMENTS PROCESSED</div>
+                    <div class="stat-value">{{ total_docs }}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">MANUAL HOURS SAVED</div>
+                    <div class="stat-value" style="color: var(--success);">{{ hours_saved }}h</div>
+                    <div class="stat-desc">@ 15 mins/doc</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">COST SAVINGS</div>
+                    <div class="stat-value" style="color: var(--success);">${{ cost_savings }}</div>
+                    <div class="stat-desc">@ $50/hour</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resource Usage -->
+        <div class="content-section">
+            <h2><i class="fas fa-server"></i> Resource Usage</h2>
+            <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                <div class="stat-card">
+                    <div class="stat-label">TOTAL TOKENS</div>
+                    <div class="stat-value">{{ total_tokens }}</div>
+                    <div class="stat-desc">Processed by LLMs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">STORAGE USED</div>
+                    <div class="stat-value">{{ storage_used }} MB</div>
+                    <div class="stat-desc">Temporary storage</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">ESTIMATED INFRA COST</div>
+                    <div class="stat-value">${{ infra_cost }}</div>
+                    <div class="stat-desc">This month</div>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="/admin" class="cta-btn cta-btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

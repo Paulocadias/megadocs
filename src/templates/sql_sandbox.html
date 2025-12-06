@@ -1,0 +1,1696 @@
+{% extends "base.html" %}
+
+{% block chat_widget %}{% endblock %}
+
+{% block title %}SQL Sandbox - BYOD Database Query | MegaDoc{% endblock %}
+{% block description %}Upload your database and query it with natural language. Supports SQLite, SQL dumps, CSV, and Excel files.{% endblock %}
+
+{% block extra_head %}
+<style>
+    :root {
+        --warning-bg: #FFF9E6;
+        --warning-border: #F59E0B;
+        --success-bg: #F0FDF4;
+        --success-border: #10B981;
+        --error-bg: #FEF2F2;
+        --error-border: #EF4444;
+        --code-bg: #1F2937;
+    }
+
+    /* Page Container */
+    .sandbox-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 1.5rem;
+    }
+
+    /* Page Header */
+    .page-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .page-title {
+        font-size: 2.25rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .page-badges {
+        display: flex;
+        justify-content: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .badge {
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        color: #6B7280;
+        font-weight: 600;
+    }
+
+    .badge-dot {
+        color: #D1D5DB;
+    }
+
+    .page-description {
+        color: var(--text-light);
+        font-size: 1rem;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    /* Session Timer */
+    .session-timer {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: white;
+        border: 1px solid var(--border);
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        color: var(--text-light);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        z-index: 100;
+        display: none;
+    }
+
+    .session-timer.active {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .session-timer.warning {
+        border-color: var(--warning-border);
+        color: #92400E;
+    }
+
+    /* Phase 1: Security Banner */
+    .security-banner {
+        background: var(--warning-bg);
+        border: 1px solid var(--warning-border);
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .security-header {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .security-icon {
+        font-size: 1.5rem;
+    }
+
+    .security-title {
+        font-weight: 700;
+        color: #92400E;
+        font-size: 1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .security-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 0.75rem;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    .security-list li {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        color: #A16207;
+        font-size: 0.9rem;
+    }
+
+    .security-list li strong {
+        color: #92400E;
+    }
+
+    /* Consent Checkbox */
+    .consent-box {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 1rem 1.25rem;
+        background: white;
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 1.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .consent-box:hover {
+        border-color: var(--primary);
+    }
+
+    .consent-box.checked {
+        border-color: var(--success-border);
+        background: var(--success-bg);
+    }
+
+    .consent-box input[type="checkbox"] {
+        width: 1.5rem;
+        height: 1.5rem;
+        cursor: pointer;
+        accent-color: var(--success-border);
+    }
+
+    .consent-label {
+        font-size: 0.95rem;
+        color: var(--text);
+        cursor: pointer;
+    }
+
+    .consent-warning {
+        color: var(--warning-border);
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+        display: none;
+    }
+
+    .consent-box:not(.checked) + .consent-warning {
+        display: block;
+    }
+
+    /* Blocked overlay */
+    .blocked-section {
+        opacity: 0.5;
+        pointer-events: none;
+        transition: opacity 0.3s;
+    }
+
+    .blocked-section.enabled {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* Phase 2: Upload Strategy Cards */
+    .strategy-cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .strategy-cards {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .strategy-card {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.25rem;
+        text-align: center;
+        transition: all 0.2s;
+    }
+
+    .strategy-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .strategy-icon {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .strategy-title {
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: var(--text);
+    }
+
+    .strategy-desc {
+        font-size: 0.85rem;
+        color: var(--text-light);
+    }
+
+    .strategy-formats {
+        margin-top: 0.75rem;
+        font-family: monospace;
+        font-size: 0.75rem;
+        color: var(--primary);
+    }
+
+    /* Upload Zone */
+    .upload-zone {
+        background: #F9FAFB;
+        border: 2px dashed #D1D5DB;
+        border-radius: 12px;
+        padding: 3rem 2rem;
+        text-align: center;
+        margin-bottom: 1.5rem;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .upload-zone:hover {
+        border-color: var(--primary);
+        background: #EFF6FF;
+    }
+
+    .upload-zone.dragover {
+        border-color: var(--primary);
+        background: #DBEAFE;
+    }
+
+    .upload-zone-icon {
+        font-size: 3rem;
+        color: var(--primary);
+        margin-bottom: 1rem;
+    }
+
+    .upload-zone-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+
+    .upload-zone-subtitle {
+        color: var(--text-light);
+        margin-bottom: 1rem;
+    }
+
+    .upload-zone-meta {
+        font-size: 0.85rem;
+        color: #9CA3AF;
+    }
+
+    /* Upload Progress */
+    .upload-progress {
+        display: none;
+    }
+
+    .upload-progress.active {
+        display: block;
+    }
+
+    .progress-bar {
+        height: 8px;
+        background: #E5E7EB;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 1rem 0;
+    }
+
+    .progress-fill {
+        height: 100%;
+        background: var(--primary);
+        border-radius: 4px;
+        transition: width 0.3s;
+    }
+
+    /* Success Card */
+    .success-card {
+        background: var(--success-bg);
+        border-left: 4px solid var(--success-border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        display: none;
+    }
+
+    .success-card.visible {
+        display: block;
+    }
+
+    .success-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        color: #065F46;
+        margin-bottom: 1rem;
+    }
+
+    .success-details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .success-detail {
+        font-size: 0.9rem;
+    }
+
+    .success-detail-label {
+        color: #6B7280;
+    }
+
+    .success-detail-value {
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .success-actions {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    /* Phase 3: Chat Interface */
+    .chat-container {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    @media (max-width: 1024px) {
+        .chat-container {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Chat Panel */
+    .chat-panel {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        display: flex;
+        flex-direction: column;
+        min-height: 500px;
+    }
+
+    .chat-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    /* Query Suggestions */
+    .query-suggestions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .suggestion-chip {
+        background: #EFF6FF;
+        color: var(--primary);
+        padding: 0.4rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+    }
+
+    .suggestion-chip:hover {
+        background: #DBEAFE;
+        border-color: var(--primary);
+    }
+
+    /* Chat Messages */
+    .chat-messages {
+        flex: 1;
+        padding: 1rem 1.25rem;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .chat-empty {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-light);
+    }
+
+    .chat-empty-icon {
+        font-size: 3rem;
+        opacity: 0.5;
+        margin-bottom: 0.5rem;
+    }
+
+    .message {
+        max-width: 85%;
+    }
+
+    .message.user {
+        align-self: flex-end;
+    }
+
+    .message.assistant {
+        align-self: flex-start;
+    }
+
+    .message-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--text-light);
+        margin-bottom: 0.25rem;
+    }
+
+    .message-content {
+        padding: 0.75rem 1rem;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+
+    .message.user .message-content {
+        background: var(--primary);
+        color: white;
+        border-bottom-right-radius: 4px;
+    }
+
+    .message.assistant .message-content {
+        background: #F3F4F6;
+        color: var(--text);
+        border-bottom-left-radius: 4px;
+    }
+
+    .message-sql-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin-top: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--primary);
+        cursor: pointer;
+    }
+
+    .message-sql-link:hover {
+        text-decoration: underline;
+    }
+
+    /* Chat Input */
+    .chat-input-container {
+        padding: 1rem 1.25rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .chat-input-wrapper {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .chat-input {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.95rem;
+        resize: none;
+        min-height: 44px;
+        max-height: 120px;
+    }
+
+    .chat-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .chat-input:disabled {
+        background: #F9FAFB;
+    }
+
+    .chat-send-btn {
+        padding: 0.75rem 1.25rem;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: background 0.2s;
+        min-width: 44px;
+        justify-content: center;
+    }
+
+    .chat-send-btn:hover:not(:disabled) {
+        background: #2563EB;
+    }
+
+    .chat-send-btn:disabled {
+        background: #9CA3AF;
+        cursor: not-allowed;
+    }
+
+    .chat-input-meta {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+        color: var(--text-light);
+    }
+
+    /* Architect View Panel */
+    .architect-panel {
+        background: #F9FAFB;
+        border: 1px solid #E5E7EB;
+        border-radius: 12px;
+        overflow: hidden;
+        position: sticky;
+        top: 100px;
+    }
+
+    .architect-tabs {
+        display: flex;
+        border-bottom: 1px solid #E5E7EB;
+        background: white;
+    }
+
+    .architect-tab {
+        flex: 1;
+        padding: 0.75rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--text-light);
+        background: none;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+        border-bottom: 2px solid transparent;
+    }
+
+    .architect-tab:hover {
+        color: var(--text);
+        background: #F9FAFB;
+    }
+
+    .architect-tab.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+    }
+
+    .architect-content {
+        padding: 1rem;
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .architect-tab-content {
+        display: none;
+    }
+
+    .architect-tab-content.active {
+        display: block;
+    }
+
+    /* SQL Code Block */
+    .sql-block {
+        background: var(--code-bg);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .sql-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        background: #374151;
+        font-size: 0.75rem;
+        color: #9CA3AF;
+    }
+
+    .sql-code {
+        padding: 1rem;
+        color: #E5E7EB;
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 0.85rem;
+        white-space: pre-wrap;
+        overflow-x: auto;
+    }
+
+    .sql-actions {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 1rem;
+    }
+
+    .sql-action-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8rem;
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .sql-action-btn:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .security-check {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        background: var(--success-bg);
+        border-radius: 6px;
+        font-size: 0.8rem;
+        color: #065F46;
+        margin-top: 1rem;
+    }
+
+    .security-check.warning {
+        background: var(--error-bg);
+        color: #DC2626;
+    }
+
+    /* Schema Tab */
+    .schema-table {
+        margin-bottom: 1rem;
+    }
+
+    .schema-table-name {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        color: var(--primary);
+        margin-bottom: 0.5rem;
+    }
+
+    .schema-table-count {
+        font-weight: normal;
+        font-size: 0.75rem;
+        color: var(--text-light);
+    }
+
+    .schema-columns {
+        padding-left: 1rem;
+        font-family: monospace;
+        font-size: 0.8rem;
+        color: var(--text-light);
+    }
+
+    .schema-columns li {
+        margin-bottom: 0.25rem;
+    }
+
+    /* Logs Tab */
+    .log-entry {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .log-entry.success {
+        background: var(--success-bg);
+        color: #065F46;
+    }
+
+    .log-entry.error {
+        background: var(--error-bg);
+        color: #DC2626;
+    }
+
+    .log-entry.info {
+        background: #EFF6FF;
+        color: var(--primary);
+    }
+
+    /* Metrics Dashboard */
+    .metrics-dashboard {
+        background: white;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .metrics-title {
+        text-align: center;
+        font-weight: 600;
+        color: var(--text-light);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.85rem;
+        margin-bottom: 1rem;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        text-align: center;
+    }
+
+    @media (max-width: 768px) {
+        .metrics-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .metric-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--text-light);
+        letter-spacing: 0.05em;
+    }
+
+    /* Error Display */
+    .error-card {
+        background: var(--error-bg);
+        border: 1px solid #FECACA;
+        border-radius: 12px;
+        padding: 1.5rem;
+    }
+
+    .error-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 600;
+        color: #DC2626;
+        margin-bottom: 0.75rem;
+    }
+
+    .error-message {
+        color: #B91C1C;
+        font-size: 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .error-tip {
+        font-size: 0.85rem;
+        color: #6B7280;
+    }
+
+    /* Loading States */
+    .loading-spinner {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 2px solid #E5E7EB;
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 20;
+        border-radius: 12px;
+    }
+
+    .loading-text {
+        margin-top: 1rem;
+        color: var(--text-light);
+        font-size: 0.9rem;
+    }
+
+    /* Buttons */
+    .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: var(--primary);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .btn-primary:hover {
+        background: #2563EB;
+    }
+
+    .btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        background: white;
+        color: var(--text);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    /* Accessibility */
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        border: 0;
+    }
+
+    /* Mobile Accordion for Architect View */
+    @media (max-width: 1024px) {
+        .architect-panel {
+            position: static;
+        }
+
+        .architect-accordion-toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 1rem 1.25rem;
+            background: white;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .architect-panel.collapsed .architect-content {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sandbox-container">
+    <!-- Session Timer -->
+    <div class="session-timer" id="sessionTimer">
+        <span>&#9201;</span>
+        <span>Session: <span id="timerValue">30</span> mins remaining</span>
+    </div>
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1 class="page-title">
+            <span>&#128268;</span> Universal SQL Sandbox
+        </h1>
+        <div class="page-badges">
+            <span class="badge">BYOD</span>
+            <span class="badge-dot">&#8226;</span>
+            <span class="badge">READ-ONLY</span>
+            <span class="badge-dot">&#8226;</span>
+            <span class="badge">EPHEMERAL SESSION</span>
+        </div>
+        <p class="page-description">
+            A secure sandbox for querying your own databases using AI. Upload SQLite files,
+            SQL dumps, or spreadsheets&mdash;no data is permanently stored.
+        </p>
+    </div>
+
+    <!-- Phase 1: Security Banner -->
+    <div class="security-banner">
+        <div class="security-header">
+            <span class="security-icon">&#128737;</span>
+            <span class="security-title">Secure Sandbox Mode</span>
+        </div>
+        <ul class="security-list">
+            <li>
+                <span>&#128274;</span>
+                <span><strong>Read-Only Access:</strong> AI cannot modify your data</span>
+            </li>
+            <li>
+                <span>&#9203;</span>
+                <span><strong>Ephemeral Storage:</strong> All data deleted after session (30 min)</span>
+            </li>
+            <li>
+                <span>&#128230;</span>
+                <span><strong>Size Limit:</strong> Maximum 50MB per file upload</span>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Consent Checkbox -->
+    <label class="consent-box" id="consentBox">
+        <input type="checkbox" id="consentCheckbox" aria-describedby="consentDesc">
+        <span class="consent-label" id="consentDesc">
+            I acknowledge this session is ephemeral and contains no PII or sensitive data
+        </span>
+    </label>
+    <div class="consent-warning" id="consentWarning">
+        &#9888; You must accept the terms to proceed
+    </div>
+
+    <!-- Phase 2: Upload Section -->
+    <div class="blocked-section" id="uploadSection">
+        <!-- Strategy Cards -->
+        <div class="strategy-cards">
+            <div class="strategy-card">
+                <div class="strategy-icon">&#128202;</div>
+                <div class="strategy-title">SQLite Database</div>
+                <div class="strategy-desc">Native database files with full schema support</div>
+                <div class="strategy-formats">.sqlite, .db, .sqlite3</div>
+            </div>
+            <div class="strategy-card">
+                <div class="strategy-icon">&#128221;</div>
+                <div class="strategy-title">SQL Dump</div>
+                <div class="strategy-desc">Rehydrate from SQL script files</div>
+                <div class="strategy-formats">.sql</div>
+            </div>
+            <div class="strategy-card">
+                <div class="strategy-icon">&#128200;</div>
+                <div class="strategy-title">Spreadsheet</div>
+                <div class="strategy-desc">Convert CSV or Excel to queryable tables</div>
+                <div class="strategy-formats">.csv, .xlsx</div>
+            </div>
+        </div>
+
+        <!-- Upload Zone -->
+        <div class="upload-zone" id="uploadZone" role="button" tabindex="0" aria-label="Upload database file">
+            <div class="upload-zone-icon">&#128449;</div>
+            <div class="upload-zone-title">Drag & Drop Database File</div>
+            <div class="upload-zone-subtitle">or click to browse</div>
+            <div class="upload-zone-meta">
+                Supported: .sqlite, .db, .sql, .csv, .xlsx | Max size: 50 MB
+            </div>
+            <input type="file" id="fileInput" accept=".sqlite,.db,.sqlite3,.sql,.csv,.xlsx" style="display: none;" aria-hidden="true">
+        </div>
+
+        <!-- Upload Progress -->
+        <div class="upload-progress" id="uploadProgress">
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                <div class="loading-spinner"></div>
+                <span id="uploadFileName">Processing file...</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <!-- Success Card -->
+        <div class="success-card" id="successCard">
+            <div class="success-header">
+                <span>&#9989;</span> Database Ingested Successfully
+            </div>
+            <div class="success-details">
+                <div class="success-detail">
+                    <span class="success-detail-label">File:</span>
+                    <span class="success-detail-value" id="successFileName">-</span>
+                </div>
+                <div class="success-detail">
+                    <span class="success-detail-label">Strategy:</span>
+                    <span class="success-detail-value" id="successStrategy">-</span>
+                </div>
+                <div class="success-detail">
+                    <span class="success-detail-label">Tables:</span>
+                    <span class="success-detail-value" id="successTables">-</span>
+                </div>
+                <div class="success-detail">
+                    <span class="success-detail-label">Total Rows:</span>
+                    <span class="success-detail-value" id="successRows">-</span>
+                </div>
+            </div>
+            <div class="success-actions">
+                <button class="btn-primary" onclick="focusQueryInput()">
+                    Start Querying <span>&#8594;</span>
+                </button>
+                <button class="btn-secondary" onclick="resetDatabase()">
+                    Upload New File
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phase 3: Chat Interface -->
+    <div class="chat-container blocked-section" id="chatSection">
+        <!-- Left: Chat Panel -->
+        <div class="chat-panel" style="position: relative;">
+            <div class="chat-header">
+                <span>&#129302;</span> Ask Questions in Natural Language
+            </div>
+
+            <!-- Query Suggestions -->
+            <div class="query-suggestions" id="querySuggestions">
+                <button class="suggestion-chip" data-query="Show me the table schema">Show schema</button>
+                <button class="suggestion-chip" data-query="Show the first 10 rows">First 10 rows</button>
+                <button class="suggestion-chip" data-query="How many total rows are there?">Total row count</button>
+                <button class="suggestion-chip" data-query="Give me a summary of the data">Summarize data</button>
+            </div>
+
+            <!-- Chat Messages -->
+            <div class="chat-messages" id="chatMessages">
+                <div class="chat-empty" id="chatEmpty">
+                    <div class="chat-empty-icon">&#128172;</div>
+                    <div>Ask a question about your database</div>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                    <textarea
+                        class="chat-input"
+                        id="queryInput"
+                        placeholder="Ask a question about your database..."
+                        rows="1"
+                        disabled
+                        aria-label="Query input"
+                    ></textarea>
+                    <button class="chat-send-btn" id="sendBtn" disabled aria-label="Send query">
+                        <span>&#9654;</span>
+                    </button>
+                </div>
+                <div class="chat-input-meta">
+                    <span>Press Enter to send, Shift+Enter for new line</span>
+                    <span id="charCount">0 / 500</span>
+                </div>
+            </div>
+
+            <!-- Loading Overlay -->
+            <div class="loading-overlay" id="queryLoading" style="display: none;">
+                <div class="loading-spinner" style="width: 40px; height: 40px;"></div>
+                <div class="loading-text" id="loadingText">Analyzing schema... Generating SQL...</div>
+            </div>
+        </div>
+
+        <!-- Right: Architect View Panel -->
+        <div class="architect-panel" id="architectPanel">
+            <div class="architect-tabs">
+                <button class="architect-tab active" data-tab="sql" aria-selected="true">
+                    <span>&#128269;</span> SQL
+                </button>
+                <button class="architect-tab" data-tab="schema" aria-selected="false">
+                    <span>&#128203;</span> Schema
+                </button>
+                <button class="architect-tab" data-tab="logs" aria-selected="false">
+                    <span>&#9889;</span> Logs
+                </button>
+            </div>
+            <div class="architect-content">
+                <!-- SQL Tab -->
+                <div class="architect-tab-content active" id="tabSql">
+                    <div class="sql-block">
+                        <div class="sql-header">
+                            <span>Generated SQL</span>
+                            <button class="sql-action-btn" onclick="copySQL()" title="Copy to clipboard">
+                                <span>&#128203;</span> Copy
+                            </button>
+                        </div>
+                        <pre class="sql-code" id="sqlCode">-- No query executed yet</pre>
+                    </div>
+                    <div class="sql-actions">
+                        <button class="sql-action-btn" onclick="rerunQuery()">
+                            <span>&#9654;</span> Re-run Query
+                        </button>
+                    </div>
+                    <div class="security-check" id="securityCheck">
+                        <span>&#9989;</span> Security Check Passed (Read-Only)
+                    </div>
+                </div>
+
+                <!-- Schema Tab -->
+                <div class="architect-tab-content" id="tabSchema">
+                    <p style="color: var(--text-light);">Upload a database to view schema</p>
+                </div>
+
+                <!-- Logs Tab -->
+                <div class="architect-tab-content" id="tabLogs">
+                    <div id="logEntries">
+                        <div class="log-entry info">
+                            <span>&#9432;</span>
+                            <span>Session started</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Metrics Dashboard -->
+    <div class="metrics-dashboard" id="metricsDashboard">
+        <div class="metrics-title">Session Sandbox Metrics</div>
+        <div class="metrics-grid">
+            <div class="metric">
+                <div class="metric-value" id="metricFiles">0</div>
+                <div class="metric-label">Files Ingested</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value">&#128274;</div>
+                <div class="metric-label">Read-Only Enforced</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="metricBlocked">0</div>
+                <div class="metric-label">DML Blocked</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="metricQueries">0</div>
+                <div class="metric-label">Queries Executed</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // State
+    let state = {
+        hasConsent: false,
+        hasDatabase: false,
+        currentSQL: '',
+        queryCount: 0,
+        dmlBlockedCount: 0,
+        filesIngested: 0,
+        sessionStart: Date.now(),
+        messages: []
+    };
+
+    // DOM Elements
+    const elements = {
+        consentCheckbox: document.getElementById('consentCheckbox'),
+        consentBox: document.getElementById('consentBox'),
+        consentWarning: document.getElementById('consentWarning'),
+        uploadSection: document.getElementById('uploadSection'),
+        chatSection: document.getElementById('chatSection'),
+        uploadZone: document.getElementById('uploadZone'),
+        fileInput: document.getElementById('fileInput'),
+        uploadProgress: document.getElementById('uploadProgress'),
+        progressFill: document.getElementById('progressFill'),
+        uploadFileName: document.getElementById('uploadFileName'),
+        successCard: document.getElementById('successCard'),
+        queryInput: document.getElementById('queryInput'),
+        sendBtn: document.getElementById('sendBtn'),
+        chatMessages: document.getElementById('chatMessages'),
+        chatEmpty: document.getElementById('chatEmpty'),
+        queryLoading: document.getElementById('queryLoading'),
+        loadingText: document.getElementById('loadingText'),
+        sqlCode: document.getElementById('sqlCode'),
+        securityCheck: document.getElementById('securityCheck'),
+        tabSchema: document.getElementById('tabSchema'),
+        logEntries: document.getElementById('logEntries'),
+        charCount: document.getElementById('charCount'),
+        sessionTimer: document.getElementById('sessionTimer'),
+        timerValue: document.getElementById('timerValue')
+    };
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        setupConsentHandler();
+        setupUploadHandler();
+        setupQueryHandler();
+        setupTabs();
+        setupSuggestions();
+        startSessionTimer();
+    });
+
+    // Consent Handler
+    function setupConsentHandler() {
+        elements.consentCheckbox.addEventListener('change', async function() {
+            state.hasConsent = this.checked;
+            elements.consentBox.classList.toggle('checked', state.hasConsent);
+            elements.consentWarning.style.display = state.hasConsent ? 'none' : 'block';
+            elements.uploadSection.classList.toggle('enabled', state.hasConsent);
+
+            if (state.hasConsent) {
+                try {
+                    await fetch('/api/sql/consent', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ consent: true })
+                    });
+                    addLog('info', 'Consent granted - sandbox enabled');
+                } catch (e) {
+                    console.error('Consent error:', e);
+                }
+            }
+        });
+    }
+
+    // Upload Handler
+    function setupUploadHandler() {
+        elements.uploadZone.addEventListener('click', () => {
+            if (state.hasConsent) elements.fileInput.click();
+        });
+
+        elements.uploadZone.addEventListener('keydown', (e) => {
+            if ((e.key === 'Enter' || e.key === ' ') && state.hasConsent) {
+                e.preventDefault();
+                elements.fileInput.click();
+            }
+        });
+
+        elements.uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            if (state.hasConsent) elements.uploadZone.classList.add('dragover');
+        });
+
+        elements.uploadZone.addEventListener('dragleave', () => {
+            elements.uploadZone.classList.remove('dragover');
+        });
+
+        elements.uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            elements.uploadZone.classList.remove('dragover');
+            if (state.hasConsent && e.dataTransfer.files.length) {
+                handleFileUpload(e.dataTransfer.files[0]);
+            }
+        });
+
+        elements.fileInput.addEventListener('change', () => {
+            if (elements.fileInput.files.length) {
+                handleFileUpload(elements.fileInput.files[0]);
+            }
+        });
+    }
+
+    async function handleFileUpload(file) {
+        // Validate
+        if (file.size > 50 * 1024 * 1024) {
+            showError('File size exceeds 50MB limit', 'Try filtering your data or splitting into multiple files.');
+            return;
+        }
+
+        const validExts = ['.sqlite', '.db', '.sqlite3', '.sql', '.csv', '.xlsx'];
+        const ext = '.' + file.name.split('.').pop().toLowerCase();
+        if (!validExts.includes(ext)) {
+            showError(`Unsupported format: ${ext}`, `Supported: ${validExts.join(', ')}`);
+            return;
+        }
+
+        // Show progress
+        elements.uploadZone.style.display = 'none';
+        elements.uploadProgress.classList.add('active');
+        elements.uploadFileName.textContent = `Processing: ${file.name}`;
+
+        // Simulate progress
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress = Math.min(progress + Math.random() * 20, 90);
+            elements.progressFill.style.width = `${progress}%`;
+        }, 200);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const response = await fetch('/api/sql/upload', {
+                method: 'POST',
+                credentials: 'include',
+                body: formData
+            });
+
+            const result = await response.json();
+            clearInterval(progressInterval);
+            elements.progressFill.style.width = '100%';
+
+            if (result.success || result.tables) {
+                setTimeout(() => {
+                    elements.uploadProgress.classList.remove('active');
+                    showSuccessCard(file.name, ext, result);
+                    enableQueryInterface(result);
+                    state.hasDatabase = true;
+                    state.filesIngested++;
+                    updateMetrics();
+                    addLog('success', `Ingested: ${file.name}`);
+                }, 500);
+            } else {
+                elements.uploadProgress.classList.remove('active');
+                elements.uploadZone.style.display = 'block';
+                showError('Upload failed', result.error || 'Unknown error');
+                addLog('error', `Upload failed: ${result.error}`);
+            }
+        } catch (error) {
+            clearInterval(progressInterval);
+            elements.uploadProgress.classList.remove('active');
+            elements.uploadZone.style.display = 'block';
+            showError('Upload failed', error.message);
+            addLog('error', `Upload error: ${error.message}`);
+        }
+    }
+
+    function showSuccessCard(fileName, ext, result) {
+        const strategies = {
+            '.sqlite': 'Native SQLite (Read-Only)',
+            '.db': 'Native SQLite (Read-Only)',
+            '.sqlite3': 'Native SQLite (Read-Only)',
+            '.sql': 'SQL Dump Rehydration',
+            '.csv': 'Spreadsheet Translation (Pandas)',
+            '.xlsx': 'Spreadsheet Translation (Pandas)'
+        };
+
+        document.getElementById('successFileName').textContent = fileName;
+        document.getElementById('successStrategy').textContent = strategies[ext] || 'Unknown';
+
+        const tables = result.tables || [];
+        document.getElementById('successTables').textContent =
+            `${tables.length} (${tables.map(t => t.name || t).slice(0, 3).join(', ')}${tables.length > 3 ? '...' : ''})`;
+
+        const totalRows = Object.values(result.row_counts || {}).reduce((a, b) => a + b, 0);
+        document.getElementById('successRows').textContent = `~${totalRows.toLocaleString()}`;
+
+        elements.successCard.classList.add('visible');
+    }
+
+    function enableQueryInterface(result) {
+        elements.chatSection.classList.add('enabled');
+        elements.queryInput.disabled = false;
+        elements.sendBtn.disabled = false;
+        elements.sessionTimer.classList.add('active');
+
+        // Render schema
+        renderSchema(result);
+    }
+
+    function renderSchema(result) {
+        const tables = result.tables || [];
+        const rowCounts = result.row_counts || {};
+
+        if (tables.length === 0) {
+            elements.tabSchema.innerHTML = '<p style="color: var(--text-light);">No tables found</p>';
+            return;
+        }
+
+        let html = '';
+        for (const table of tables) {
+            const tableName = table.name || table;
+            const count = table.row_count || rowCounts[tableName] || 0;
+
+            html += `
+                <div class="schema-table">
+                    <div class="schema-table-name">
+                        <span>&#128203;</span> ${escapeHtml(tableName)}
+                        <span class="schema-table-count">(${count.toLocaleString()} rows)</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        elements.tabSchema.innerHTML = html;
+    }
+
+    // Query Handler
+    function setupQueryHandler() {
+        elements.queryInput.addEventListener('input', () => {
+            const len = elements.queryInput.value.length;
+            elements.charCount.textContent = `${len} / 500`;
+            autoResizeTextarea(elements.queryInput);
+        });
+
+        elements.queryInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                runQuery();
+            }
+        });
+
+        elements.sendBtn.addEventListener('click', runQuery);
+    }
+
+    async function runQuery() {
+        const question = elements.queryInput.value.trim();
+        if (!question || !state.hasDatabase) return;
+
+        // Add user message
+        addMessage('user', question);
+        elements.queryInput.value = '';
+        elements.charCount.textContent = '0 / 500';
+
+        // Show loading
+        elements.queryLoading.style.display = 'flex';
+        elements.loadingText.textContent = 'Analyzing schema... Generating SQL...';
+
+        try {
+            const response = await fetch('/api/sql/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ question })
+            });
+
+            const result = await response.json();
+
+            if (result.error) {
+                // Check for DML blocked
+                if (result.error.includes('INSERT') || result.error.includes('UPDATE') ||
+                    result.error.includes('DELETE') || result.error.includes('DROP')) {
+                    state.dmlBlockedCount++;
+                    updateMetrics();
+                    addMessage('assistant', `&#9888; **Security Protocol Activated**\n\nI cannot execute this query because it contains a write operation. This sandbox enforces read-only mode to protect your data.\n\nI can help you with SELECT queries, aggregations, and analytics instead.`, true);
+                    elements.securityCheck.className = 'security-check warning';
+                    elements.securityCheck.innerHTML = '<span>&#9888;</span> DML Operation Blocked';
+                } else {
+                    addMessage('assistant', `&#10060; **Query Error**\n\n${result.error}`, true);
+                }
+                addLog('error', result.error);
+            } else {
+                state.queryCount++;
+                state.currentSQL = result.sql || '';
+                updateMetrics();
+
+                // Format response
+                let responseText = '';
+                if (result.results && result.results.length > 0) {
+                    responseText = formatQueryResults(result);
+                } else {
+                    responseText = 'Query executed successfully but returned no results.';
+                }
+
+                addMessage('assistant', responseText, false, result.sql);
+
+                // Update SQL panel
+                elements.sqlCode.textContent = result.sql || '-- No SQL generated';
+                elements.securityCheck.className = 'security-check';
+                elements.securityCheck.innerHTML = '<span>&#9989;</span> Security Check Passed (Read-Only)';
+
+                addLog('success', `Query executed: ${result.row_count || 0} rows (${result.execution_time_ms || 0}ms)`);
+            }
+        } catch (error) {
+            addMessage('assistant', `&#10060; Query failed: ${error.message}`, true);
+            addLog('error', error.message);
+        } finally {
+            elements.queryLoading.style.display = 'none';
+        }
+    }
+
+    function formatQueryResults(result) {
+        const { columns, results, row_count, execution_time_ms } = result;
+
+        if (!results || results.length === 0) {
+            return 'No results found.';
+        }
+
+        let text = `Found **${row_count}** results (${execution_time_ms}ms):\n\n`;
+
+        // Show first 5 rows as summary
+        const previewRows = results.slice(0, 5);
+        for (const row of previewRows) {
+            const rowText = columns.map((col, i) => `${col}: ${row[i] ?? 'null'}`).join(' | ');
+            text += `- ${rowText}\n`;
+        }
+
+        if (results.length > 5) {
+            text += `\n...and ${results.length - 5} more rows`;
+        }
+
+        return text;
+    }
+
+    function addMessage(role, content, isError = false, sql = null) {
+        elements.chatEmpty.style.display = 'none';
+
+        const msgDiv = document.createElement('div');
+        msgDiv.className = `message ${role}`;
+
+        const avatar = role === 'user' ? '&#128100;' : '&#129302;';
+        const label = role === 'user' ? 'You' : 'AI Assistant';
+
+        msgDiv.innerHTML = `
+            <div class="message-header">${avatar} ${label}</div>
+            <div class="message-content">${formatMarkdown(content)}</div>
+            ${sql ? `<div class="message-sql-link" onclick="showSQLTab()">&#128269; View Generated SQL</div>` : ''}
+        `;
+
+        elements.chatMessages.appendChild(msgDiv);
+        elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+
+        state.messages.push({ role, content });
+    }
+
+    function formatMarkdown(text) {
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\n/g, '<br>');
+    }
+
+    // Tabs
+    function setupTabs() {
+        document.querySelectorAll('.architect-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.dataset.tab;
+
+                document.querySelectorAll('.architect-tab').forEach(t => {
+                    t.classList.remove('active');
+                    t.setAttribute('aria-selected', 'false');
+                });
+                tab.classList.add('active');
+                tab.setAttribute('aria-selected', 'true');
+
+                document.querySelectorAll('.architect-tab-content').forEach(c => c.classList.remove('active'));
+                document.getElementById(`tab${tabId.charAt(0).toUpperCase() + tabId.slice(1)}`).classList.add('active');
+            });
+        });
+    }
+
+    function showSQLTab() {
+        document.querySelectorAll('.architect-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('[data-tab="sql"]').classList.add('active');
+        document.querySelectorAll('.architect-tab-content').forEach(c => c.classList.remove('active'));
+        document.getElementById('tabSql').classList.add('active');
+    }
+
+    // Suggestions
+    function setupSuggestions() {
+        document.querySelectorAll('.suggestion-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                elements.queryInput.value = chip.dataset.query;
+                elements.queryInput.focus();
+                elements.charCount.textContent = `${chip.dataset.query.length} / 500`;
+            });
+        });
+    }
+
+    // Session Timer
+    function startSessionTimer() {
+        let remaining = 30;
+        setInterval(() => {
+            if (state.hasConsent) {
+                remaining = Math.max(0, remaining - 1/60);
+                elements.timerValue.textContent = Math.ceil(remaining);
+
+                if (remaining <= 5) {
+                    elements.sessionTimer.classList.add('warning');
+                }
+            }
+        }, 1000);
+    }
+
+    // Logs
+    function addLog(type, message) {
+        const icons = { success: '&#9989;', error: '&#10060;', info: '&#9432;' };
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${type}`;
+        entry.innerHTML = `<span>${icons[type]}</span><span>${escapeHtml(message)}</span>`;
+        elements.logEntries.appendChild(entry);
+    }
+
+    // Metrics
+    function updateMetrics() {
+        document.getElementById('metricFiles').textContent = state.filesIngested;
+        document.getElementById('metricBlocked').textContent = state.dmlBlockedCount;
+        document.getElementById('metricQueries').textContent = state.queryCount;
+    }
+
+    // Utilities
+    function copySQL() {
+        navigator.clipboard.writeText(state.currentSQL || elements.sqlCode.textContent);
+        addLog('info', 'SQL copied to clipboard');
+    }
+
+    function rerunQuery() {
+        if (state.currentSQL) {
+            elements.queryInput.value = `Run this SQL: ${state.currentSQL}`;
+            runQuery();
+        }
+    }
+
+    function focusQueryInput() {
+        elements.queryInput.focus();
+    }
+
+    function resetDatabase() {
+        fetch('/api/sql/clear', { method: 'POST', credentials: 'include' });
+
+        state.hasDatabase = false;
+        elements.successCard.classList.remove('visible');
+        elements.uploadZone.style.display = 'block';
+        elements.chatSection.classList.remove('enabled');
+        elements.queryInput.disabled = true;
+        elements.sendBtn.disabled = true;
+        elements.queryInput.value = '';
+        elements.chatMessages.innerHTML = '';
+        elements.chatEmpty.style.display = 'flex';
+        elements.sqlCode.textContent = '-- No query executed yet';
+        elements.tabSchema.innerHTML = '<p style="color: var(--text-light);">Upload a database to view schema</p>';
+
+        addLog('info', 'Session cleared');
+    }
+
+    function showError(title, message) {
+        alert(`${title}\n\n${message}`);
+    }
+
+    function autoResizeTextarea(el) {
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+</script>
+{% endblock %}

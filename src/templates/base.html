@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MegaDoc{% endblock %}</title>
+    <meta name="description"
+        content="{% block description %}Convert documents to Markdown for RAG pipelines and AI applications{% endblock %}">
+    {% include 'includes/head_common.html' %}
+    {% block extra_head %}{% endblock %}
+    {% block styles %}{% endblock %}
+</head>
+
+<body>
+    {% include 'includes/header.html' %}
+
+    <div class="app-container{% block container_class %}{% endblock %}">
+        {% block content %}{% endblock %}
+    </div>
+
+    {% include 'includes/footer.html' %}
+
+    {% block extra_scripts %}{% endblock %}
+
+    <!-- What's New Announcement Modal -->
+    <div id="whatsNewModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.6); z-index: 10000; backdrop-filter: blur(4px); animation: fadeIn 0.3s ease;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 20px; max-width: 500px; width: 90%; box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25); overflow: hidden; animation: slideUp 0.4s ease;">
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 1.5rem 2rem; color: white; position: relative;">
+                <button onclick="closeWhatsNewModal()" style="position: absolute; top: 1rem; right: 1rem; background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1.25rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">&times;</button>
+                <div style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.9; margin-bottom: 0.5rem;">What's New</div>
+                <h2 style="margin: 0; font-size: 1.75rem; font-weight: 800;">SQL Sandbox</h2>
+                <p style="margin: 0.5rem 0 0 0; opacity: 0.9; font-size: 0.95rem;">Bring Your Own Database (BYOD)</p>
+            </div>
+
+            <!-- Content -->
+            <div style="padding: 2rem;">
+                <p style="color: #374151; margin: 0 0 1.25rem 0; line-height: 1.6;">
+                    Query your data with natural language. Upload SQLite databases, SQL dumps, or spreadsheets - we'll handle the rest.
+                </p>
+
+                <!-- Features List -->
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div style="width: 28px; height: 28px; background: rgba(16, 185, 129, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <span style="color: #10b981;">&#9679;</span>
+                        </div>
+                        <span style="color: #374151; font-size: 0.9rem;"><strong>Universal Ingestion</strong> - SQLite, SQL dumps, CSV, Excel</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div style="width: 28px; height: 28px; background: rgba(59, 130, 246, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <span style="color: #3b82f6;">&#9679;</span>
+                        </div>
+                        <span style="color: #374151; font-size: 0.9rem;"><strong>Natural Language</strong> - Ask questions in plain English</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div style="width: 28px; height: 28px; background: rgba(245, 158, 11, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <span style="color: #f59e0b;">&#9679;</span>
+                        </div>
+                        <span style="color: #374151; font-size: 0.9rem;"><strong>Read-Only</strong> - Your data stays safe, always</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div style="width: 28px; height: 28px; background: rgba(139, 92, 246, 0.1); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <span style="color: #8b5cf6;">&#9679;</span>
+                        </div>
+                        <span style="color: #374151; font-size: 0.9rem;"><strong>Ephemeral</strong> - Session-based, no persistence</span>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div style="display: flex; gap: 1rem;">
+                    <a href="/sql-sandbox" onclick="closeWhatsNewModal()" style="flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 0.875rem 1.5rem; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 0.95rem; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);">
+                        Try SQL Sandbox
+                        <span style="font-size: 1.1rem;">&#8594;</span>
+                    </a>
+                    <button onclick="closeWhatsNewModal()" style="padding: 0.875rem 1.25rem; border-radius: 10px; border: 1px solid #e5e7eb; background: white; color: #6b7280; font-weight: 500; cursor: pointer; font-size: 0.95rem; transition: background 0.2s;">
+                        Later
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translate(-50%, -45%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
+        }
+        #whatsNewModal button:hover {
+            background: rgba(255,255,255,0.3) !important;
+        }
+        #whatsNewModal a:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+        }
+    </style>
+
+    <!-- MegaDoc Assistant Chat Widget (hidden on pages with their own chat) -->
+    {% block chat_widget %}
+    {% include 'includes/chat_widget.html' %}
+    {% endblock %}
+
+    <script>
+        // What's New Modal Logic
+        (function() {
+            const modalKey = 'megadoc_whats_new_sql_sandbox_v1';
+            const modalSeen = localStorage.getItem(modalKey);
+
+            if (!modalSeen) {
+                // Show modal after a short delay for better UX
+                setTimeout(function() {
+                    const modal = document.getElementById('whatsNewModal');
+                    if (modal) {
+                        modal.style.display = 'block';
+                    }
+                }, 2000);
+            }
+        })();
+
+        function closeWhatsNewModal() {
+            const modal = document.getElementById('whatsNewModal');
+            if (modal) {
+                modal.style.display = 'none';
+                localStorage.setItem('megadoc_whats_new_sql_sandbox_v1', 'true');
+            }
+        }
+
+        // Close modal on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeWhatsNewModal();
+            }
+        });
+
+        // Close modal on backdrop click
+        document.getElementById('whatsNewModal')?.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeWhatsNewModal();
+            }
+        });
+    </script>
+</body>
+
+</html>

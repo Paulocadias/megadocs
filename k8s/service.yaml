@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: megadoc-service
+  namespace: default
+  labels:
+    app: megadoc
+  annotations:
+    cloud.google.com/neg: '{"ingress": true}' # Network Endpoint Group for Ingress
+spec:
+  type: ClusterIP
+  selector:
+    app: megadoc
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP

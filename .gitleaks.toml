@@ -1,0 +1,13 @@
+# Gitleaks configuration
+# Whitelist documentation examples (not real secrets)
+
+[allowlist]
+  description = "Allow example/placeholder API keys in documentation"
+  paths = [
+    '''docs/.*\.md$''',
+    '''README\.md$'''
+  ]
+  regexes = [
+    '''your-key-here''',
+    '''X-API-Key:\s*your-key-here'''
+  ]

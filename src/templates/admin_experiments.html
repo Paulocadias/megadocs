@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block title %}A/B Experiments - MegaDoc Admin{% endblock %}
+
+{% block content %}
+<div class="docs-page">
+    <section class="hero-section" style="text-align: center; padding: 3rem 0;">
+        <span class="badge">ADMIN DASHBOARD</span>
+        <h1 style="font-size: 2.5rem; margin: 1rem 0;">A/B Experiments</h1>
+        <p class="subtitle">Manage feature flags and view experiment results</p>
+    </section>
+
+    <div style="max-width: 1000px; margin: 0 auto;">
+        {% for exp_id, data in results.items() %}
+        <div class="content-section" style="margin-bottom: 2rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem;">
+                <div>
+                    <h2 style="margin: 0 0 0.5rem 0;">{{ data.experiment }}</h2>
+                    <span class="badge" style="background: var(--primary); color: white;">{{ data.status|upper }}</span>
+                    <code style="margin-left: 0.5rem; font-size: 0.8rem;">{{ exp_id }}</code>
+                </div>
+            </div>
+
+            <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                {% for variant, metrics in data.results.items() %}
+                <div class="stat-card" style="text-align: left;">
+                    <div class="stat-label" style="color: var(--primary); font-weight: 700;">{{ variant|upper }}</div>
+
+                    <div style="margin-top: 1rem;">
+                        <div class="stat-row">
+                            <span>Assignments</span>
+                            <strong>{{ metrics.assignments }}</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>Conversions</span>
+                            <strong>{{ metrics.conversions }}</strong>
+                        </div>
+                        <div class="stat-row"
+                            style="border-top: 2px solid var(--border); margin-top: 0.5rem; padding-top: 0.5rem;">
+                            <span>Conversion Rate</span>
+                            <strong
+                                style="color: {% if metrics.conversion_rate > 0 %}var(--success){% else %}var(--text){% endif %};">
+                                {{ metrics.conversion_rate }}%
+                            </strong>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem; color: var(--text-light);">
+            <p>No active experiments found.</p>
+        </div>
+        {% endfor %}
+
+        <div style="text-align: center; margin-top: 2rem;">
+            <a href="/admin" class="cta-btn cta-btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
