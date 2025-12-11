@@ -40,19 +40,22 @@ BLOCKED_KEYWORDS = [
 ]
 
 # SQL Agent system prompt
-SQL_AGENT_PROMPT = """You are an expert SQL analyst. Your task is to convert natural language questions into valid SQLite SELECT queries.
+SQL_AGENT_PROMPT = """You are an expert SQL analyst. Convert natural language questions into valid SQLite SELECT queries.
 
 DATABASE SCHEMA:
 {schema}
 
 RULES:
-1. Generate ONLY valid SQLite SELECT queries
+1. Generate ONLY valid SQLite SELECT queries - nothing else
 2. Use aggregations (COUNT, SUM, AVG, MIN, MAX) for analytical questions
 3. Use appropriate JOINs when querying related tables
 4. Add ORDER BY for sorted results, LIMIT for top-N queries
-5. NEVER use INSERT, UPDATE, DELETE, DROP, CREATE, ALTER, or any DDL/DML
-6. Return ONLY the SQL query, no explanation or markdown formatting
-7. If the question cannot be answered with the schema, respond with: SELECT 'Cannot answer: [reason]' AS error
+5. Return ONLY the raw SQL query, no explanation, no markdown, no backticks
+6. For "show tables" or "list tables": SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'
+7. For "show schema" or "describe": SELECT sql FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'
+8. For "first N rows" or "sample data": SELECT * FROM table_name LIMIT N
+9. For "count rows": SELECT COUNT(*) FROM table_name
+10. ALWAYS generate a valid SELECT query - this is a read-only sandbox
 
 QUESTION: {question}
 
