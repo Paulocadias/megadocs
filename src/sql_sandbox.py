@@ -279,42 +279,62 @@ class UniversalSQLBuilder:
         try:
             from openrouter_gateway import chat_completion_with_fallback
         except ImportError:
+            logger.warning("openrouter_gateway not available for AI conversion")
             return None
 
-        prompt = """Convert this MySQL/PostgreSQL SQL dump to SQLite-compatible syntax.
+        logger.info(f"Attempting AI-powered SQL conversion ({len(sql)} chars)")
 
-RULES:
-1. Remove all MySQL-specific syntax (ENGINE, CHARSET, COLLATE, etc.)
-2. Convert AUTO_INCREMENT columns to: column_name INTEGER PRIMARY KEY AUTOINCREMENT
-3. Remove LOCK/UNLOCK TABLES statements
-4. Convert data types: INT/BIGINT/TINYINT -> INTEGER, VARCHAR -> TEXT, DATETIME -> TEXT
-5. Remove KEY/INDEX definitions inside CREATE TABLE
-6. Keep INSERT statements but fix any syntax issues
-7. Remove stored procedures, triggers, and views (they're not needed for data analysis)
-8. Output ONLY valid SQLite SQL, no explanations
+        prompt = """Convert this MySQL/PostgreSQL SQL dump to valid SQLite syntax.
 
-SQL to convert:
-```sql
+CRITICAL RULES:
+1. AUTO_INCREMENT columns MUST become: column_name INTEGER PRIMARY KEY AUTOINCREMENT
+   - Example: `id` int NOT NULL AUTO_INCREMENT -> id INTEGER PRIMARY KEY AUTOINCREMENT
+   - Example: `log_id` bigint unsigned NOT NULL AUTO_INCREMENT -> log_id INTEGER PRIMARY KEY AUTOINCREMENT
+2. Remove ENGINE=InnoDB, DEFAULT CHARSET, COLLATE, AUTO_INCREMENT=N (table option)
+3. Remove LOCK TABLES, UNLOCK TABLES
+4. Remove all MySQL conditional comments /*!xxxxx ... */
+5. Convert: BIGINT/INT/TINYINT/SMALLINT -> INTEGER
+6. Convert: VARCHAR(n)/CHAR(n) -> TEXT
+7. Convert: DATETIME/TIMESTAMP -> TEXT
+8. Convert: JSON -> TEXT
+9. Remove KEY/INDEX/UNIQUE KEY definitions inside CREATE TABLE
+10. Remove COMMENT 'text' clauses
+11. Keep DROP TABLE IF EXISTS and INSERT statements
+12. Output ONLY valid SQLite SQL statements, no markdown, no explanations
+
+Input MySQL:
 {sql}
-```
 
-SQLite output:"""
+Output SQLite:"""
 
-        result = chat_completion_with_fallback(
-            messages=[{"role": "user", "content": prompt.format(sql=sql[:40000])}],
-            model="Google Gemini 2.0 Flash",
-            temperature=0.0,
-            max_tokens=8000
-        )
+        try:
+            result = chat_completion_with_fallback(
+                messages=[{"role": "user", "content": prompt.format(sql=sql[:40000])}],
+                model="Google Gemini 2.0 Flash",
+                temperature=0.0,
+                max_tokens=10000
+            )
 
-        if result and result.get('success'):
-            content = result.get('content', '')
-            # Extract SQL from response (remove markdown code blocks if present)
-            if '```sql' in content:
-                content = content.split('```sql')[1].split('```')[0]
-            elif '```' in content:
-                content = content.split('```')[1].split('```')[0]
-            return content.strip()
+            if result and result.get('success'):
+                content = result.get('content', '')
+                # Extract SQL from response (remove markdown code blocks if present)
+                if '```sql' in content:
+                    content = content.split('```sql')[1].split('```')[0]
+                elif '```' in content:
+                    parts = content.split('```')
+                    if len(parts) > 1:
+                        content = parts[1]
+
+                content = content.strip()
+                if content and ('CREATE TABLE' in content.upper() or 'INSERT' in content.upper()):
+                    logger.info(f"AI conversion successful ({len(content)} chars)")
+                    return content
+                else:
+                    logger.warning("AI returned content but no valid SQL detected")
+            else:
+                logger.warning(f"AI conversion failed: {result.get('error', 'unknown')}")
+        except Exception as e:
+            logger.error(f"AI conversion error: {e}")
 
         return None
 
