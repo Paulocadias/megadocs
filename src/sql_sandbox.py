@@ -248,13 +248,21 @@ class UniversalSQLBuilder:
         """
         Convert MySQL/PostgreSQL SQL syntax to SQLite-compatible syntax.
 
-        Uses sqlglot for robust SQL transpilation, with regex fallback for
-        unsupported constructs like MySQL conditional comments.
+        Uses AI-powered conversion first, then sqlglot, with regex fallback.
         """
-        # Phase 1: Pre-processing - Remove MySQL-specific constructs that sqlglot can't handle
+        # Phase 1: Pre-processing - Remove MySQL-specific constructs
         sql = self._preprocess_mysql_dump(sql)
 
-        # Phase 2: Use sqlglot for SQL transpilation (statement by statement)
+        # Phase 2: Try AI-powered conversion for complex dumps
+        if len(sql) < 50000:  # Only for smaller dumps to avoid token limits
+            try:
+                converted = self._convert_with_ai(sql)
+                if converted:
+                    return converted
+            except Exception as e:
+                logger.debug(f"AI conversion skipped: {e}")
+
+        # Phase 3: Use sqlglot for SQL transpilation (statement by statement)
         try:
             sql = self._convert_with_sqlglot(sql)
         except Exception as e:
@@ -262,6 +270,53 @@ class UniversalSQLBuilder:
             sql = self._convert_to_sqlite_regex(sql)
 
         return sql
+
+    def _convert_with_ai(self, sql: str) -> str:
+        """
+        Use LLM to convert MySQL/PostgreSQL SQL to SQLite syntax.
+        More robust than regex for complex edge cases.
+        """
+        try:
+            from openrouter_gateway import chat_completion_with_fallback
+        except ImportError:
+            return None
+
+        prompt = """Convert this MySQL/PostgreSQL SQL dump to SQLite-compatible syntax.
+
+RULES:
+1. Remove all MySQL-specific syntax (ENGINE, CHARSET, COLLATE, etc.)
+2. Convert AUTO_INCREMENT columns to: column_name INTEGER PRIMARY KEY AUTOINCREMENT
+3. Remove LOCK/UNLOCK TABLES statements
+4. Convert data types: INT/BIGINT/TINYINT -> INTEGER, VARCHAR -> TEXT, DATETIME -> TEXT
+5. Remove KEY/INDEX definitions inside CREATE TABLE
+6. Keep INSERT statements but fix any syntax issues
+7. Remove stored procedures, triggers, and views (they're not needed for data analysis)
+8. Output ONLY valid SQLite SQL, no explanations
+
+SQL to convert:
+```sql
+{sql}
+```
+
+SQLite output:"""
+
+        result = chat_completion_with_fallback(
+            messages=[{"role": "user", "content": prompt.format(sql=sql[:40000])}],
+            model="Google Gemini 2.0 Flash",
+            temperature=0.0,
+            max_tokens=8000
+        )
+
+        if result and result.get('success'):
+            content = result.get('content', '')
+            # Extract SQL from response (remove markdown code blocks if present)
+            if '```sql' in content:
+                content = content.split('```sql')[1].split('```')[0]
+            elif '```' in content:
+                content = content.split('```')[1].split('```')[0]
+            return content.strip()
+
+        return None
 
     def _preprocess_mysql_dump(self, sql: str) -> str:
         """
@@ -418,28 +473,63 @@ class UniversalSQLBuilder:
         sql = re.sub(r'\bINT\b(?!EGER)', 'INTEGER', sql, flags=re.IGNORECASE)
 
         # Handle AUTO_INCREMENT patterns - convert to SQLite AUTOINCREMENT
+        # Order matters: handle most specific patterns first
+
+        # Pattern: INTEGER UNSIGNED NOT NULL AUTO_INCREMENT (followed by PRIMARY KEY or not)
         sql = re.sub(
-            r'\bINTEGER\s+(?:UNSIGNED\s+)?(?:NOT\s+NULL\s+)?AUTO_INCREMENT\s+PRIMARY\s+KEY\b',
+            r'\bINTEGER\s+UNSIGNED\s+NOT\s+NULL\s+AUTO_INCREMENT\b',
             'INTEGER PRIMARY KEY AUTOINCREMENT',
             sql,
             flags=re.IGNORECASE
         )
+
+        # Pattern: INTEGER NOT NULL AUTO_INCREMENT
+        sql = re.sub(
+            r'\bINTEGER\s+NOT\s+NULL\s+AUTO_INCREMENT\b',
+            'INTEGER PRIMARY KEY AUTOINCREMENT',
+            sql,
+            flags=re.IGNORECASE
+        )
+
+        # Pattern: INTEGER UNSIGNED AUTO_INCREMENT
+        sql = re.sub(
+            r'\bINTEGER\s+UNSIGNED\s+AUTO_INCREMENT\b',
+            'INTEGER PRIMARY KEY AUTOINCREMENT',
+            sql,
+            flags=re.IGNORECASE
+        )
+
+        # Pattern: INTEGER AUTO_INCREMENT PRIMARY KEY
+        sql = re.sub(
+            r'\bINTEGER\s+AUTO_INCREMENT\s+PRIMARY\s+KEY\b',
+            'INTEGER PRIMARY KEY AUTOINCREMENT',
+            sql,
+            flags=re.IGNORECASE
+        )
+
+        # Pattern: INTEGER PRIMARY KEY AUTO_INCREMENT
         sql = re.sub(
             r'\bINTEGER\s+PRIMARY\s+KEY\s+AUTO_INCREMENT\b',
             'INTEGER PRIMARY KEY AUTOINCREMENT',
             sql,
             flags=re.IGNORECASE
         )
+
+        # Pattern: INTEGER AUTO_INCREMENT (no PRIMARY KEY)
         sql = re.sub(
-            r'\bINTEGER\s+(?:UNSIGNED\s+)?(?:NOT\s+NULL\s+)?AUTO_INCREMENT\b',
+            r'\bINTEGER\s+AUTO_INCREMENT\b(?!\s+PRIMARY)',
             'INTEGER PRIMARY KEY AUTOINCREMENT',
             sql,
             flags=re.IGNORECASE
         )
+
+        # Convert any remaining AUTO_INCREMENT to AUTOINCREMENT
         sql = re.sub(r'\bAUTO_INCREMENT\b', 'AUTOINCREMENT', sql, flags=re.IGNORECASE)
 
-        # Fix any remaining AUTOINCREMENT patterns
+        # Fix any remaining AUTOINCREMENT that's not in valid position
+        # Valid: INTEGER PRIMARY KEY AUTOINCREMENT
         sql = re.sub(r'PRIMARY\s+KEY\s+AUTOINCREMENT', 'PRIMARY KEY __VALID_AUTOINC__', sql, flags=re.IGNORECASE)
+        sql = re.sub(r'INTEGER\s+PRIMARY\s+KEY\s+__VALID_AUTOINC__', 'INTEGER PRIMARY KEY AUTOINCREMENT', sql)
         sql = re.sub(r'\bAUTOINCREMENT\b', '', sql, flags=re.IGNORECASE)
         sql = sql.replace('__VALID_AUTOINC__', 'AUTOINCREMENT')
 
