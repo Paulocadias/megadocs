@@ -310,9 +310,7 @@ Output SQLite:"""
         try:
             result = chat_completion_with_fallback(
                 messages=[{"role": "user", "content": prompt.format(sql=sql[:40000])}],
-                model="Google Gemini 2.0 Flash",
-                temperature=0.0,
-                max_tokens=10000
+                model="Google Gemini 2.0 Flash"
             )
 
             if result and result.get('success'):
@@ -417,10 +415,14 @@ Output SQLite:"""
         Post-process sqlglot output for SQLite compatibility.
         Handles AUTOINCREMENT placement and other SQLite-specific fixes.
         """
-        # Remove type size specifiers (INTEGER(11), UINT(11), etc.)
-        sql = re.sub(r'\bINTEGER\s*\(\d+\)', 'INTEGER', sql, flags=re.IGNORECASE)
-        sql = re.sub(r'\bUINT\s*\(\d+\)', 'INTEGER', sql, flags=re.IGNORECASE)
+        # Convert unsigned integer types to INTEGER
+        sql = re.sub(r'\bUBIGINT\b', 'INTEGER', sql, flags=re.IGNORECASE)
+        sql = re.sub(r'\bUSMALLINT\b', 'INTEGER', sql, flags=re.IGNORECASE)
+        sql = re.sub(r'\bUTINYINT\b', 'INTEGER', sql, flags=re.IGNORECASE)
         sql = re.sub(r'\bUINT\b', 'INTEGER', sql, flags=re.IGNORECASE)
+
+        # Remove type size specifiers (INTEGER(11), etc.)
+        sql = re.sub(r'\bINTEGER\s*\(\d+\)', 'INTEGER', sql, flags=re.IGNORECASE)
 
         # Remove TEXT size specifiers (TEXT(255) -> TEXT)
         sql = re.sub(r'\bTEXT\s*\(\d+\)', 'TEXT', sql, flags=re.IGNORECASE)
@@ -428,12 +430,21 @@ Output SQLite:"""
         # Remove REAL precision (REAL(10, 2) -> REAL)
         sql = re.sub(r'\bREAL\s*\(\d+\s*,\s*\d+\)', 'REAL', sql, flags=re.IGNORECASE)
 
-        # Convert TIMESTAMPTZ to TEXT (SQLite doesn't have timestamp types)
+        # Convert JSON to TEXT (SQLite doesn't have JSON type)
+        sql = re.sub(r'\bJSON\b', 'TEXT', sql, flags=re.IGNORECASE)
+
+        # Convert DATETIME to TEXT
+        sql = re.sub(r'\bDATETIME\b', 'TEXT', sql, flags=re.IGNORECASE)
+
+        # Convert TIMESTAMPTZ/TIMESTAMP to TEXT
         sql = re.sub(r'\bTIMESTAMPTZ\b', 'TEXT', sql, flags=re.IGNORECASE)
         sql = re.sub(r'\bTIMESTAMP\b', 'TEXT', sql, flags=re.IGNORECASE)
 
         # Convert ENUM to TEXT
         sql = re.sub(r"\bENUM\s*\([^)]+\)", 'TEXT', sql, flags=re.IGNORECASE)
+
+        # Remove COMMENT clauses
+        sql = re.sub(r"\bCOMMENT\s+'[^']*'", '', sql, flags=re.IGNORECASE)
 
         # Remove ZEROFILL
         sql = re.sub(r'\bZEROFILL\b', '', sql, flags=re.IGNORECASE)
@@ -443,9 +454,26 @@ Output SQLite:"""
         sql = re.sub(r',?\s*INDEX\s+\w+\s*\([^)]+\)', '', sql, flags=re.IGNORECASE)
         sql = re.sub(r',?\s*KEY\s+\w+\s*\([^)]+\)', '', sql, flags=re.IGNORECASE)
 
-        # Fix pattern: INTEGER NOT NULL AUTOINCREMENT PRIMARY KEY -> INTEGER PRIMARY KEY AUTOINCREMENT
+        # Fix AUTOINCREMENT patterns - SQLite requires: INTEGER PRIMARY KEY AUTOINCREMENT
+        # Pattern: AUTOINCREMENT PRIMARY KEY -> PRIMARY KEY AUTOINCREMENT
+        sql = re.sub(
+            r'\bAUTOINCREMENT\s+PRIMARY\s+KEY\b',
+            'PRIMARY KEY AUTOINCREMENT',
+            sql,
+            flags=re.IGNORECASE
+        )
+
+        # Pattern: INTEGER NOT NULL AUTOINCREMENT PRIMARY KEY -> INTEGER PRIMARY KEY AUTOINCREMENT
         sql = re.sub(
             r'\bINTEGER\s+(?:NOT\s+NULL\s+)?AUTOINCREMENT\s+PRIMARY\s+KEY\b',
+            'INTEGER PRIMARY KEY AUTOINCREMENT',
+            sql,
+            flags=re.IGNORECASE
+        )
+
+        # Pattern: INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT -> INTEGER PRIMARY KEY AUTOINCREMENT
+        sql = re.sub(
+            r'\bINTEGER\s+NOT\s+NULL\s+PRIMARY\s+KEY\s+AUTOINCREMENT\b',
             'INTEGER PRIMARY KEY AUTOINCREMENT',
             sql,
             flags=re.IGNORECASE
