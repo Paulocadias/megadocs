@@ -1,0 +1,62 @@
+# Smart Router Configuration
+# Defines model mapping for different complexity levels
+#
+# ALL MODELS ARE FREE TIER on OpenRouter (Dec 2025)
+# https://openrouter.ai/models?q=free
+#
+# Cost optimization strategy:
+# - Simple queries -> Fast models (Gemini Flash, Mistral Small)
+# - Moderate queries -> Balanced models (DeepSeek V3, Llama 4 Scout)
+# - Complex queries -> High capability models (Llama 4 Maverick, Gemini Pro, DeepSeek R1)
+
+models:
+  simple:
+    primary: "Google Gemini 2.0 Flash"
+    fallback: "Mistral Small 3.1"
+    description: "Fast responses for simple queries (greetings, summaries, definitions)"
+
+  moderate:
+    primary: "DeepSeek V3"
+    fallback: "Meta Llama 4 Scout"
+    description: "Balanced performance for standard queries"
+
+  complex:
+    primary: "Meta Llama 4 Maverick"
+    fallback: "Google Gemini 2.5 Pro"
+    description: "High capability for complex analysis and reasoning"
+
+# Thresholds for complexity detection
+thresholds:
+  simple_max_words: 50          # Prompts under this are likely simple
+  complex_min_words: 150        # Prompts over this are likely complex
+  technical_term_threshold: 4   # Number of technical terms for complexity boost
+
+# Regex patterns for complexity detection (case-insensitive)
+patterns:
+  simple_indicators:
+    - "^(what|who|when|where|how many|how much)\\b"
+    - "^(summarize|summary)\\b"
+    - "^(list|enumerate)\\b"
+    - "^(define|definition)\\b"
+    - "^(explain briefly|quick)\\b"
+    - "^(hi|hello|hey|thanks|thank you)\\b"
+    - "^(yes|no|ok|okay)\\b"
+
+  complex_indicators:
+    - "\\b(analyze|analysis|evaluate|assessment)\\b"
+    - "\\b(compare|contrast|differentiate)\\b"
+    - "\\b(implications|consequences|impact)\\b"
+    - "\\b(trade-?offs?|pros and cons)\\b"
+    - "\\b(legal|compliance|regulatory|statute)\\b"
+    - "\\b(medical|clinical|diagnosis|treatment)\\b"
+    - "\\b(multi-?step|detailed|comprehensive|thorough)\\b"
+    - "\\b(why|reasoning|rationale|justify)\\b"
+    - "\\b(strategy|strategic|recommend)\\b"
+
+# Domain-specific overrides
+# These domains always use at least the specified complexity level
+domain_overrides:
+  legal:
+    min_complexity: "moderate"  # Legal queries need better models
+  medical:
+    min_complexity: "moderate"  # Medical queries need accuracy

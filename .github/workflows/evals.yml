@@ -1,0 +1,199 @@
+# =============================================================================
+# MegaDocs Safety Evaluation Pipeline
+# Author: Paulo Dias - AI Tech Lead & Solutions Architect
+# =============================================================================
+# Runs adversarial prompt testing against the chat API to validate
+# that the system properly refuses dangerous/malicious requests.
+#
+# Triggered on:
+#   - Pull requests to main (required safety gate)
+#   - Manual workflow dispatch for on-demand testing
+# =============================================================================
+
+name: Safety Evals
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'tests/evals/**'
+      - 'config/**'
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target URL for evals (default: starts local server)'
+        required: false
+        default: ''
+      verbose:
+        description: 'Verbose output'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PYTHON_VERSION: "3.10"
+
+# Cancel in-progress runs for same PR
+concurrency:
+  group: evals-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ════════════════════════════════════════════════════════════════════════════
+  # SAFETY EVALUATION
+  # ════════════════════════════════════════════════════════════════════════════
+  safety-evals:
+    name: "🛡️ Safety Evals"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-html pytest-json-report
+
+      - name: Start Application
+        if: ${{ github.event.inputs.target_url == '' }}
+        env:
+          SECRET_KEY: "eval-test-key"
+          MAX_FILE_SIZE: 52428800
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          cd src && python app.py &
+          echo "Waiting for server to start..."
+          for i in {1..30}; do
+            if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
+              echo "Server ready!"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: "🔒 Run Safety Evaluations"
+        env:
+          EVAL_BASE_URL: ${{ github.event.inputs.target_url || 'http://localhost:8080' }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          python -m pytest tests/evals/ \
+            -v \
+            --tb=short \
+            -m eval \
+            --html=eval-report.html \
+            --self-contained-html \
+            --json-report \
+            --json-report-file=eval-results.json \
+            || EVAL_EXIT_CODE=$?
+
+          # Generate summary regardless of test outcome
+          echo "### 🛡️ Safety Evaluation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f eval-results.json ]; then
+            PASSED=$(jq '.summary.passed // 0' eval-results.json)
+            FAILED=$(jq '.summary.failed // 0' eval-results.json)
+            TOTAL=$(jq '.summary.total // 0' eval-results.json)
+
+            echo "| Metric | Count |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            echo "| Total Tests | $TOTAL |" >> $GITHUB_STEP_SUMMARY
+            echo "| Passed | $PASSED |" >> $GITHUB_STEP_SUMMARY
+            echo "| Failed | $FAILED |" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+            if [ "$FAILED" -gt 0 ]; then
+              echo "#### Failed Tests" >> $GITHUB_STEP_SUMMARY
+              jq -r '.tests[] | select(.outcome == "failed") | "- \(.nodeid)"' eval-results.json >> $GITHUB_STEP_SUMMARY 2>/dev/null || true
+            fi
+          fi
+
+          exit ${EVAL_EXIT_CODE:-0}
+
+      - name: Upload Eval Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: safety-eval-report
+          path: |
+            eval-report.html
+            eval-results.json
+          retention-days: 30
+
+      - name: "📊 Post Results to PR"
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            let summary = '## 🛡️ Safety Evaluation Results\n\n';
+
+            try {
+              const results = JSON.parse(fs.readFileSync('eval-results.json', 'utf8'));
+              const passed = results.summary?.passed || 0;
+              const failed = results.summary?.failed || 0;
+              const total = results.summary?.total || 0;
+
+              if (failed === 0) {
+                summary += `✅ **All ${total} safety tests passed!**\n\n`;
+                summary += 'The AI properly refused all adversarial prompts.\n';
+              } else {
+                summary += `⚠️ **${failed}/${total} safety tests failed**\n\n`;
+                summary += 'The following adversarial prompts were NOT properly refused:\n\n';
+
+                const failedTests = results.tests?.filter(t => t.outcome === 'failed') || [];
+                failedTests.forEach(test => {
+                  const name = test.nodeid.split('::').pop();
+                  summary += `- \`${name}\`\n`;
+                });
+
+                summary += '\n> **Action Required**: Review and fix before merging.\n';
+              }
+            } catch (e) {
+              summary += 'Unable to parse eval results. Check workflow logs.\n';
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # EVAL SUMMARY
+  # ════════════════════════════════════════════════════════════════════════════
+  eval-summary:
+    name: "📋 Eval Summary"
+    runs-on: ubuntu-latest
+    needs: safety-evals
+    if: always()
+    steps:
+      - name: Evaluation Status
+        run: |
+          echo "## 🛡️ Safety Evaluation Pipeline" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ needs.safety-evals.result }}" == "success" ]; then
+            echo "✅ **All safety evaluations passed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "The AI system properly refused all adversarial prompts:" >> $GITHUB_STEP_SUMMARY
+            echo "- Jailbreak attempts" >> $GITHUB_STEP_SUMMARY
+            echo "- Prompt injection" >> $GITHUB_STEP_SUMMARY
+            echo "- PII extraction" >> $GITHUB_STEP_SUMMARY
+            echo "- Harmful content generation" >> $GITHUB_STEP_SUMMARY
+            echo "- Role manipulation" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Safety evaluation failed**" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Some adversarial prompts were not properly refused." >> $GITHUB_STEP_SUMMARY
+            echo "Review the eval report artifact for details." >> $GITHUB_STEP_SUMMARY
+          fi

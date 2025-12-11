@@ -1,0 +1,23 @@
+{
+  "title": "Sample JSON Document",
+  "version": "1.0.0",
+  "description": "Test JSON file for MegaDoc conversion",
+  "features": [
+    {
+      "name": "Document Conversion",
+      "status": "active"
+    },
+    {
+      "name": "RAG Pipeline",
+      "status": "active"
+    },
+    {
+      "name": "Multi-Model Chat",
+      "status": "active"
+    }
+  ],
+  "metadata": {
+    "created": "2025-01-01",
+    "author": "MegaDoc Test Suite"
+  }
+}

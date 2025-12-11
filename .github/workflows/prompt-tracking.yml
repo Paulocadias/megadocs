@@ -1,0 +1,121 @@
+# =============================================================================
+# MegaDocs Prompt Version Tracking
+# Author: Paulo Dias - AI Tech Lead & Solutions Architect
+# =============================================================================
+# Tracks changes to prompt templates and system prompts across the codebase.
+# Posts diff reports to PRs when prompts are modified.
+# =============================================================================
+
+name: Prompt Tracking
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/**/*.py'
+      - 'config/**/*.yaml'
+      - 'config/**/*.yml'
+
+jobs:
+  prompt-diff:
+    name: "📝 Prompt Change Detection"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: "🔍 Detect Prompt Changes"
+        id: prompt-changes
+        run: |
+          # Find all files with prompt-related content
+          PROMPT_PATTERNS='system_prompt|SYSTEM_PROMPT|prompt_template|EVALUATION_PROMPTS|DOMAIN_PROMPTS'
+
+          # Get changed files
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD || git diff --name-only HEAD~1)
+
+          echo "### 📝 Prompt Version Tracking" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          PROMPT_CHANGES=""
+          PROMPT_FILES=""
+
+          for file in $CHANGED_FILES; do
+            if [[ -f "$file" && ("$file" == *.py || "$file" == *.yaml || "$file" == *.yml) ]]; then
+              # Check if file contains prompt-related code
+              if grep -qE "$PROMPT_PATTERNS" "$file" 2>/dev/null; then
+                PROMPT_FILES="$PROMPT_FILES $file"
+
+                # Get diff for this file (only prompt-related lines)
+                DIFF=$(git diff origin/main...HEAD -- "$file" 2>/dev/null || git diff HEAD~1 -- "$file")
+
+                if echo "$DIFF" | grep -qE "$PROMPT_PATTERNS"; then
+                  echo "Found prompt changes in: $file"
+                  PROMPT_CHANGES="$PROMPT_CHANGES\n### $file\n\`\`\`diff\n$(echo "$DIFF" | head -100)\n\`\`\`\n"
+                fi
+              fi
+            fi
+          done
+
+          if [ -n "$PROMPT_FILES" ]; then
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "| File | Status |" >> $GITHUB_STEP_SUMMARY
+            echo "|------|--------|" >> $GITHUB_STEP_SUMMARY
+            for f in $PROMPT_FILES; do
+              echo "| $f | 📝 Modified |" >> $GITHUB_STEP_SUMMARY
+            done
+          else
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "No prompt changes detected in this PR." >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: "📊 Generate Prompt Inventory"
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Current Prompt Inventory" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Location | Type | Description |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|------|-------------|" >> $GITHUB_STEP_SUMMARY
+
+          # Scan for prompts in key files
+          if [ -f "src/openrouter_gateway.py" ]; then
+            echo "| openrouter_gateway.py | Domain Prompts | Legal, Medical, Technical, General profiles |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f "src/evaluator.py" ]; then
+            echo "| evaluator.py | Evaluation Prompts | Chat, Investigation, SQL response grading |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f "src/agents/investigator.py" ]; then
+            echo "| agents/investigator.py | Agent Prompts | Decompose, Analyze, Validate steps |" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f "config/models.yaml" ]; then
+            echo "| config/models.yaml | Model Config | Complexity routing rules |" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: "💬 Comment on PR"
+        if: steps.prompt-changes.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            let comment = '## 📝 Prompt Changes Detected\n\n';
+            comment += 'This PR modifies prompt templates or system prompts. Please review carefully:\n\n';
+            comment += '### Checklist\n';
+            comment += '- [ ] Prompt changes are intentional\n';
+            comment += '- [ ] No sensitive information exposed\n';
+            comment += '- [ ] Safety guardrails maintained\n';
+            comment += '- [ ] Tested with adversarial inputs\n\n';
+            comment += '> 💡 Run safety evals before merging: `pytest tests/evals/ -v -m eval`\n';
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
