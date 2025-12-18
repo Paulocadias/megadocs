@@ -237,7 +237,7 @@ jobs:
 
       - name: "📊 Upload Coverage to Codecov"
         if: matrix.test-type == 'unit' && matrix.python-version == '3.10'
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: coverage-unit.xml
           flags: unittests
