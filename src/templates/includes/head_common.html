@@ -1,0 +1,113 @@
+<!-- Favicon -->
+<link rel="icon" type="image/png" href="/static/logo.png">
+
+<!-- Bootstrap 5 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+
+<!-- Typography -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;700;800&display=swap"
+    rel="stylesheet">
+
+<!-- Custom CSS (loads after Bootstrap to allow overrides) -->
+<link rel="stylesheet" href="/static/style.css">
+
+<!-- Bootstrap 5 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+
+<!-- Mermaid.js for Interactive Diagrams -->
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+    mermaid.initialize({
+        startOnLoad: true,
+        theme: 'base',
+        themeVariables: {
+            primaryColor: '#2563eb',
+            primaryTextColor: '#1e293b',
+            primaryBorderColor: '#3b82f6',
+            lineColor: '#64748b',
+            secondaryColor: '#f1f5f9',
+            tertiaryColor: '#e0f2fe'
+        },
+        flowchart: {
+            curve: 'basis',
+            padding: 20
+        },
+        securityLevel: 'loose'
+    });
+</script>
+
+<!-- JSON-LD Structured Data -->
+<script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@graph": [
+        {
+            "@type": "SoftwareApplication",
+            "@id": "https://megadoc.paulocadias.com/#software",
+            "name": "MegaDoc",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "description": "Enterprise RAG platform with Smart Router cost optimization and zero data retention architecture",
+            "url": "https://megadoc.paulocadias.com",
+            "author": {
+                "@type": "Person",
+                "@id": "https://megadoc.paulocadias.com/about#person"
+            },
+            "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "USD",
+                "description": "Demo version"
+            },
+            "featureList": [
+                "Multi-format document ingestion",
+                "RAG-powered conversational AI",
+                "Smart Router cost optimization",
+                "SQL Sandbox with BYOD",
+                "Zero data retention architecture"
+            ]
+        },
+        {
+            "@type": "Person",
+            "@id": "https://megadoc.paulocadias.com/about#person",
+            "name": "Paulo Cadias",
+            "jobTitle": "AI Architect & Tech Lead",
+            "url": "https://megadoc.paulocadias.com/about",
+            "sameAs": [
+                "https://www.linkedin.com/in/paulocadias/",
+                "https://github.com/Paulocadias"
+            ],
+            "knowsAbout": [
+                "Artificial Intelligence",
+                "Machine Learning",
+                "RAG Systems",
+                "Enterprise Architecture",
+                "Cloud Infrastructure",
+                "DevSecOps"
+            ]
+        },
+        {
+            "@type": "WebSite",
+            "@id": "https://megadoc.paulocadias.com/#website",
+            "name": "MegaDoc",
+            "url": "https://megadoc.paulocadias.com",
+            "description": "AI Architect Portfolio - Enterprise RAG Platform Demo",
+            "author": {
+                "@type": "Person",
+                "@id": "https://megadoc.paulocadias.com/about#person"
+            }
+        }
+    ]
+}
+</script>
+
+<!-- Open Graph / Social Cards -->
+<meta property="og:site_name" content="MegaDoc">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://megadoc.paulocadias.com/static/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://megadoc.paulocadias.com/static/og-image.png">

@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Architecture - Multi-Modal AI Platform</title>
+    <meta name="description"
+        content="Architecture documentation for MegaDoc multi-modal AI platform. Ephemeral session storage, RAG pipeline, and security patterns.">
+    <meta name="keywords"
+        content="document processing, RAG pipeline, ephemeral session storage, AI architecture, CI/CD, markdown conversion, multi-modal AI">
+    <meta property="og:title" content="Architecture - Multi-Modal AI Platform">
+    <meta property="og:description"
+        content="Multi-modal AI platform architecture with ephemeral session storage. Visual pipelines, CI/CD automation, and security-first design.">
+    <meta property="og:type" content="website">
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='15' fill='%232563eb'/><text x='50' y='68' font-size='50' text-anchor='middle' fill='white' font-family='sans-serif' font-weight='bold'>MD</text></svg>">
+    {% include 'includes/head_common.html' %}
+    <style>
+        /* Flow Diagram */
+        .flow-section {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 2.5rem;
+            margin-bottom: 3rem;
+            box-shadow: var(--shadow);
+        }
+
+        .flow-section h2 {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            padding: 1rem 0;
+        }
+
+        .flow-node {
+            background: white;
+            border: 2px solid var(--border);
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            min-width: 140px;
+            transition: all 0.3s;
+        }
+
+        .flow-node:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .flow-node.input {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .flow-node.process {
+            border-color: #f59e0b;
+            background: #fefce8;
+        }
+
+        .flow-node.output {
+            border-color: var(--success);
+            background: #f0fdf4;
+        }
+
+        .flow-node.delete {
+            border-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .flow-node .icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .flow-node .label {
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .flow-node .sublabel {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
+
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: var(--text-light);
+        }
+
+        /* Tech Stack */
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .tech-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+        }
+
+        .tech-card h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .tech-card h3 .icon {
+            font-size: 1.25rem;
+        }
+
+        .tech-list {
+            list-style: none;
+        }
+
+        .tech-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+
+        .tech-list li:last-child {
+            border-bottom: none;
+        }
+
+        .tech-list .tech-name {
+            font-weight: 500;
+        }
+
+        .tech-list .tech-purpose {
+            color: var(--text-light);
+            font-size: 0.8rem;
+        }
+
+        /* Security Section */
+        .security-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .security-card {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+            color: white;
+            border-radius: var(--radius);
+            padding: 1.5rem;
+        }
+
+        .security-card h3 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .security-card p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+
+        /* Live Stats */
+        .live-stats {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: var(--shadow);
+        }
+
+        .live-stats h2 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+        }
+
+        .stat-card {
+            text-align: center;
+            padding: 1rem;
+            background: var(--bg);
+            border-radius: var(--radius);
+        }
+
+        .stat-card .value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-card .label {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-top: 0.25rem;
+        }
+
+        /* Why Offline */
+        .why-offline {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: white;
+            border-radius: var(--radius);
+            padding: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .why-offline h2 {
+            margin-bottom: 2rem;
+        }
+
+        .offline-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+        }
+
+        .offline-item h3 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .offline-item p {
+            font-size: 0.9rem;
+            opacity: 0.85;
+            line-height: 1.6;
+        }
+
+        /* API Endpoints */
+        .api-section {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 2rem;
+            margin-bottom: 3rem;
+            box-shadow: var(--shadow);
+        }
+
+        .api-section h2 {
+            margin-bottom: 1.5rem;
+        }
+
+        .endpoint-list {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .endpoint {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: var(--bg);
+            border-radius: var(--radius);
+            font-family: 'SF Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .endpoint .method {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            min-width: 50px;
+            text-align: center;
+        }
+
+        .endpoint .method.get {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .endpoint .method.post {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .endpoint .path {
+            color: var(--text);
+        }
+
+        .endpoint .desc {
+            color: var(--text-light);
+            font-family: inherit;
+            margin-left: auto;
+        }
+
+        /* Mermaid diagram centering */
+        .mermaid {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .mermaid svg {
+            max-width: 100%;
+            height: auto;
+        }
+
+        @media (max-width: 768px) {
+            .flow-diagram {
+                flex-direction: column;
+            }
+
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Global Header -->
+    {% include 'includes/header.html' %}
+
+    <div class="app-container">
+        <!-- Hero -->
+        <section class="hero-section" style="text-align: center; margin-bottom: 3rem;">
+            <span class="badge"
+                style="display: inline-block; background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: var(--primary); padding: 0.4rem 1rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 1rem;">PRIVACY
+                BY DESIGN • SESSION-BASED ARCHITECTURE</span>
+            <h1
+                style="font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; color: var(--text); font-family: 'Outfit', system-ui, -apple-system, sans-serif;">
+                Document Intelligence Architecture</h1>
+            <p
+                style="font-size: 1.1rem; color: var(--text-light); max-width: 1000px; margin: 0 auto; line-height: 1.6;">
+                Stateless document processing with ephemeral memory architecture. Transform documents for AI chatbots,
+                RAG pipelines, and semantic search—with configurable cloud deployment options.</p>
+            <p
+                style="font-size: 1rem; color: var(--text-light); max-width: 1000px; margin: 1rem auto 0; line-height: 1.6;">
+                This architecture is documented as a reusable blueprint for multi-modal, privacy-first document
+                intelligence systems.</p>
+        </section>
+
+        <!-- Sticky Sub-Navigation -->
+        <div class="sticky-top bg-white border-bottom shadow-sm mb-5 py-2" style="top: 0; z-index: 1000;">
+            <div class="container d-flex justify-content-center gap-3 flex-wrap">
+                <a href="#interactive-diagrams" class="text-decoration-none fw-bold"
+                    style="font-size: 0.85rem; color: var(--primary);">Diagrams</a>
+                <a href="#process-flow" class="text-decoration-none text-secondary fw-bold"
+                    style="font-size: 0.85rem;">Ingest</a>
+                <a href="#rag-pipeline" class="text-decoration-none text-secondary fw-bold"
+                    style="font-size: 0.85rem;">RAG</a>
+                <a href="#inference-flow" class="text-decoration-none text-secondary fw-bold"
+                    style="font-size: 0.85rem;">Inference</a>
+                <a href="#agent-workflow" class="text-decoration-none fw-bold"
+                    style="font-size: 0.85rem; color: #8b5cf6;">Agent</a>
+                <a href="#sql-sandbox" class="text-decoration-none fw-bold"
+                    style="font-size: 0.85rem; color: #10b981;">SQL</a>
+                <a href="#engineering" class="text-decoration-none text-secondary fw-bold"
+                    style="font-size: 0.85rem;">CI/CD</a>
+                <a href="#enterprise-arch" class="text-decoration-none text-secondary fw-bold"
+                    style="font-size: 0.85rem;">Enterprise</a>
+                <a href="#governance" class="text-decoration-none text-secondary fw-bold"
+                    style="font-size: 0.85rem;">Security</a>
+            </div>
+        </div>
+
+        <!-- Interactive Architecture Diagrams -->
+        <section id="interactive-diagrams" class="flow-section" style="margin-bottom: 2rem;">
+            <h2 style="margin-bottom: 0.5rem;">Interactive Architecture Diagrams</h2>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem;">
+                Click and explore the system architecture. These diagrams are dynamically rendered using Mermaid.js.
+            </p>
+
+            <!-- RAG Pipeline Sequence Diagram -->
+            <div style="background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--border);">
+                <h4 style="margin-bottom: 1rem; color: var(--primary);">RAG Pipeline Sequence</h4>
+                <div class="mermaid">
+sequenceDiagram
+    participant U as User
+    participant API as Flask API
+    participant R as Smart Router
+    participant E as Embedder
+    participant V as Vector Store
+    participant LLM as OpenRouter
+
+    U->>API: Upload Document
+    API->>API: Parse & Convert to MD
+    API->>E: Chunk & Embed
+    E->>V: Store Vectors
+    V-->>API: Indexed ✓
+
+    U->>API: Ask Question
+    API->>E: Embed Query
+    E->>V: Similarity Search
+    V-->>API: Top-K Chunks
+    API->>R: Analyze Complexity
+    R-->>API: Model Selection
+    API->>LLM: Context + Query
+    LLM-->>U: Streamed Response
+                </div>
+            </div>
+
+            <!-- Smart Router Decision Flow -->
+            <div style="background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--border);">
+                <h4 style="margin-bottom: 1rem; color: var(--primary);">Smart Router Decision Logic</h4>
+                <div class="mermaid">
+flowchart TD
+    A[User Query] --> B{Complexity Analysis}
+    B -->|Simple Q&A| C[Flash Model]
+    B -->|Complex Reasoning| D[Pro Model]
+    B -->|Technical Code| E[Specialized Model]
+
+    C --> F{Domain Profile?}
+    D --> F
+    E --> F
+
+    F -->|Legal| G[Legal Prompt]
+    F -->|Medical| H[Medical Prompt]
+    F -->|Technical| I[Tech Prompt]
+    F -->|General| J[Base Prompt]
+
+    G --> K[OpenRouter Gateway]
+    H --> K
+    I --> K
+    J --> K
+
+    K --> L[Response + Metrics]
+
+    style A fill:#eff6ff,stroke:#2563eb
+    style C fill:#d1fae5,stroke:#10b981
+    style D fill:#fef3c7,stroke:#f59e0b
+    style E fill:#ede9fe,stroke:#8b5cf6
+    style L fill:#f0fdf4,stroke:#10b981
+                </div>
+            </div>
+
+            <!-- GCP Infrastructure -->
+            <div style="background: white; border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border);">
+                <h4 style="margin-bottom: 1rem; color: var(--primary);">GCP Infrastructure Map</h4>
+                <div class="mermaid">
+graph TB
+    subgraph Internet
+        U[Users]
+        GH[GitHub Actions]
+    end
+
+    subgraph GCP["Google Cloud Platform"]
+        LB[Cloud Load Balancer]
+
+        subgraph Compute["Compute Engine"]
+            VM[e2-micro VM]
+            GUNICORN[Gunicorn Workers]
+            FLASK[Flask App]
+        end
+
+        subgraph Security["Security Layer"]
+            FW[Firewall Rules]
+            SA[Service Account]
+        end
+    end
+
+    subgraph External["External Services"]
+        OR[OpenRouter API]
+        EMBED[Jina Embeddings]
+    end
+
+    U --> LB
+    LB --> FW
+    FW --> VM
+    VM --> GUNICORN
+    GUNICORN --> FLASK
+    FLASK --> OR
+    FLASK --> EMBED
+    GH -->|SSH Deploy| SA
+    SA --> VM
+
+    style LB fill:#4285f4,stroke:#1a73e8,color:#fff
+    style VM fill:#34a853,stroke:#0f9d58,color:#fff
+    style OR fill:#8b5cf6,stroke:#7c3aed,color:#fff
+                </div>
+            </div>
+        </section>
+
+        <!-- Stage 1: Ingest -->
+        <section id="process-flow" class="flow-section" style="margin-bottom: 2rem;">
+            <h2>Stage 1: Multimodal Ingest & Processing</h2>
+            <div class="card border-0 shadow-sm bg-light mb-4">
+                <div class="card-body font-monospace text-center text-primary py-4">
+                    <span class="badge bg-primary mb-3">System Flow</span>
+                    <div class="flow-diagram">
+                        <div class="flow-node input">
+                            <div class="icon">📂</div>
+                            <div class="label">Ingest</div>
+                            <div class="sublabel">Docs & Images</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process">
+                            <div class="icon">🔀</div>
+                            <div class="label">Router</div>
+                            <div class="sublabel">Text vs Vision</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process">
+                            <div class="icon">⚡</div>
+                            <div class="label">Parse</div>
+                            <div class="sublabel">OCR / Extract</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node output">
+                            <div class="icon">📝</div>
+                            <div class="label">Unified</div>
+                            <div class="sublabel">Markdown</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node delete">
+                            <div class="icon">🗑️</div>
+                            <div class="label">Cleanup</div>
+                            <div class="sublabel">Ephemeral Storage</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <p style="text-align: center; color: var(--text-light); margin-top: 1.5rem; font-size: 0.9rem;">
+                Requests are processed in-memory; transient cache entries exist for up to 30/10 minutes for async
+                workflows, then are wiped.
+            </p>
+        </section>
+
+        <!-- Connecting Arrow -->
+        <div
+            style="text-align: center; font-size: 2rem; color: var(--text-light); margin-top: -2rem; margin-bottom: -0.5rem; position: relative; z-index: 10;">
+            ↓
+        </div>
+
+        <!-- Stage 2: RAG -->
+        <section id="rag-pipeline" class="flow-section" style="background: var(--surface); margin-bottom: 2rem;">
+            <p class="lead text-secondary mx-auto" style="max-width: 1000px;">
+                This architecture demonstrates a scalable, secure, and observable system for processing
+                documents and generating insights using Large Language Models.
+            </p>
+            <h2>Stage 2: RAG Preparation & Retrieval</h2>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 1.5rem;">
+                Data preparation for AI chatbots, semantic search, and retrieval-augmented generation. Supports 100k+
+                document estates with multi-tenant collections and idempotent re-indexing.
+            </p>
+            <div class="card border-0 shadow-sm bg-light mb-4">
+                <div class="card-body font-monospace text-center text-primary py-4">
+                    <span class="badge bg-primary mb-3">RAG Pipeline</span>
+                    <div class="flow-diagram">
+                        <div class="flow-node input">
+                            <div class="label">Document</div>
+                            <div class="sublabel">Any format</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process">
+                            <div class="label">Markdown</div>
+                            <div class="sublabel">Clean text</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process" style="border-color: var(--primary);">
+                            <div class="label">Chunk</div>
+                            <div class="sublabel">tiktoken accurate</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process" style="border-color: #8b5cf6; background: #f5f3ff;">
+                            <div class="label">Embed</div>
+                            <div class="sublabel">768-dim (config)</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node output">
+                            <div class="label">Export</div>
+                            <div class="sublabel">Vector-ready</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-top: 2rem;">
+                <div
+                    style="text-align: center; padding: 1rem; background: white; border-radius: var(--radius); box-shadow: var(--shadow);">
+                    <div style="font-weight: 600; color: var(--primary);">JSONL</div>
+                    <div style="font-size: 0.8rem; color: var(--text-light);">Streaming</div>
+                </div>
+                <div
+                    style="text-align: center; padding: 1rem; background: white; border-radius: var(--radius); box-shadow: var(--shadow);">
+                    <div style="font-weight: 600; color: #8b5cf6;">ChromaDB</div>
+                    <div style="font-size: 0.8rem; color: var(--text-light);">Collection ready</div>
+                </div>
+                <div
+                    style="text-align: center; padding: 1rem; background: white; border-radius: var(--radius); box-shadow: var(--shadow);">
+                    <div style="font-weight: 600; color: #059669;">LanceDB</div>
+                    <div style="font-size: 0.8rem; color: var(--text-light);">Table ready</div>
+                </div>
+                <div
+                    style="text-align: center; padding: 1rem; background: white; border-radius: var(--radius); box-shadow: var(--shadow);">
+                    <div style="font-weight: 600; color: #ef4444;">Qdrant</div>
+                    <div style="font-size: 0.8rem; color: var(--text-light);">Collection ready</div>
+                </div>
+                <div
+                    style="text-align: center; padding: 1rem; background: white; border-radius: var(--radius); box-shadow: var(--shadow);">
+                    <div style="font-weight: 600; color: #3b82f6;">PostgreSQL</div>
+                    <div style="font-size: 0.8rem; color: var(--text-light);">pgvector ready</div>
+                </div>
+            </div>
+            <p
+                style="text-align: center; font-size: 0.9rem; color: var(--text-light); margin-top: 1.5rem; max-width: 800px; margin-left: auto; margin-right: auto;">
+                Supports large document estates, multi-tenant indexing, and idempotent re-runs, so enterprises can plug
+                this stage into existing data lakes, catalogs, and governance workflows.
+            </p>
+        </section>
+
+        <!-- Connecting Arrow -->
+        <div
+            style="text-align: center; font-size: 2rem; color: var(--text-light); margin-top: -2rem; margin-bottom: -0.5rem; position: relative; z-index: 10;">
+            ↓
+        </div>
+
+        <!-- Stage 3: Inference -->
+        <section id="inference-flow" class="flow-section" style="background: var(--surface); margin-bottom: 2rem;">
+            <h2>Stage 3: RAG Inference & Generation</h2>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 1.5rem;">
+                Real-time retrieval and answer generation pipeline
+            </p>
+            <div class="card border-0 shadow-sm bg-light mb-4">
+                <div class="card-body font-monospace text-center text-primary py-4">
+                    <span class="badge bg-primary mb-3">Inference Flow</span>
+                    <div class="flow-diagram">
+                        <div class="flow-node input">
+                            <div class="label">User Query</div>
+                            <div class="sublabel">Natural Language</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process" style="border-color: #8b5cf6; background: #f5f3ff;">
+                            <div class="label">Embed</div>
+                            <div class="sublabel">Query Vector</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process">
+                            <div class="label">Vector Search</div>
+                            <div class="sublabel">Top-K Chunks</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process">
+                            <div class="label">LLM Gen</div>
+                            <div class="sublabel">Context + Prompt</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node output">
+                            <div class="label">Response</div>
+                            <div class="sublabel">Cited Answer</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Connecting Arrow -->
+        <div
+            style="text-align: center; font-size: 2rem; color: var(--text-light); margin-top: -2rem; margin-bottom: -0.5rem; position: relative; z-index: 10;">
+            ↓
+        </div>
+
+        <!-- Stage 4: Agentic Workflows (NEW) -->
+        <section id="agent-workflow" class="flow-section"
+            style="background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%); border: 2px solid #8b5cf6; margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1rem;">
+                <h2 style="margin: 0; color: var(--text);">Investigator Agent Workflow</h2>
+                <span
+                    style="background: #8b5cf6; color: white; font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 9999px; font-weight: 700;">NEW</span>
+            </div>
+            <p
+                style="text-align: center; color: var(--text-light); margin-bottom: 2rem; max-width: 800px; margin-left: auto; margin-right: auto;">
+                LangGraph-powered agentic workflow with <strong>self-correction loops</strong>, <strong>tool calling</strong>, and <strong>quality gates</strong>. Five-step pipeline with conditional retry logic.
+            </p>
+
+            <div class="card border-0 shadow-sm bg-light mb-4">
+                <div class="card-body font-monospace text-center py-4">
+                    <span class="badge mb-3" style="background: #8b5cf6;">Agent Pipeline v2.0</span>
+                    <div class="flow-diagram" style="flex-wrap: wrap; justify-content: center;">
+                        <div class="flow-node input">
+                            <div class="icon">🎯</div>
+                            <div class="label">Mission</div>
+                            <div class="sublabel">"Find legal risks..."</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process" style="border-color: #8b5cf6; background: #f5f3ff;">
+                            <div class="icon">📋</div>
+                            <div class="label">Decompose</div>
+                            <div class="sublabel">Plan sub-tasks</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process" style="border-color: #8b5cf6; background: #ede9fe;">
+                            <div class="icon">🔍</div>
+                            <div class="label">Retrieve</div>
+                            <div class="sublabel">RAG search</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process" style="border-color: #f59e0b; background: #fef3c7;">
+                            <div class="icon">🌐</div>
+                            <div class="label">Enrich</div>
+                            <div class="sublabel">Tool calling</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process" style="border-color: #8b5cf6; background: #ddd6fe;">
+                            <div class="icon">🧠</div>
+                            <div class="label">Analyze</div>
+                            <div class="sublabel">LLM reasoning</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node output" style="border-color: #10b981;">
+                            <div class="icon">🛡️</div>
+                            <div class="label">Validate</div>
+                            <div class="sublabel">Quality gate</div>
+                        </div>
+                    </div>
+                    <!-- Self-correction loop indicator -->
+                    <div style="margin-top: 1rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">
+                        <span style="font-size: 0.75rem; color: #f59e0b; font-weight: 600;">⟳ Self-Correction Loop</span>
+                        <span style="font-size: 0.7rem; color: var(--text-light);">(quality &lt; 7 → retry with feedback, max 2x)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Agent Mermaid Diagram -->
+            <div style="background: white; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--border);">
+                <h4 style="margin-bottom: 1rem; color: #8b5cf6;">Agent State Machine (with Self-Correction)</h4>
+                <div class="mermaid">
+stateDiagram-v2
+    [*] --> Decompose: User Mission
+    Decompose --> Retrieve: Sub-tasks
+    Retrieve --> Enrich: Context chunks
+    Enrich --> Analyze: + External context
+    Analyze --> Validate: Analysis
+
+    state quality_check <<choice>>
+    Validate --> quality_check
+    quality_check --> Analyze: quality < 7 (retry)
+    quality_check --> [*]: quality >= 7 (done)
+
+    note right of Decompose: Break mission into actionable queries
+    note right of Enrich: Web search (Tavily/Serper/DDG)
+    note right of Analyze: LLM reasoning + retry feedback
+    note right of Validate: Quality gate (threshold: 7/10)
+                </div>
+            </div>
+
+            <!-- Agent Features Grid -->
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-top: 2rem;">
+                <div
+                    style="text-align: center; padding: 1.25rem; background: white; border-radius: var(--radius); box-shadow: var(--shadow); border-left: 4px solid #8b5cf6;">
+                    <div style="font-weight: 600; color: #8b5cf6; font-size: 1rem;">LangGraph</div>
+                    <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem;">StateGraph + conditional edges</div>
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.5rem;">Retry loops, quality gates</div>
+                </div>
+                <div
+                    style="text-align: center; padding: 1.25rem; background: white; border-radius: var(--radius); box-shadow: var(--shadow); border-left: 4px solid #f59e0b;">
+                    <div style="font-weight: 600; color: #f59e0b; font-size: 1rem;">Self-Correction</div>
+                    <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem;">Quality threshold: 7/10</div>
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.5rem;">Max 2 retries with feedback</div>
+                </div>
+                <div
+                    style="text-align: center; padding: 1.25rem; background: white; border-radius: var(--radius); box-shadow: var(--shadow); border-left: 4px solid #3b82f6;">
+                    <div style="font-weight: 600; color: #3b82f6; font-size: 1rem;">Tool Calling</div>
+                    <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem;">Multi-provider web search</div>
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.5rem;">Tavily → Serper → DDG fallback</div>
+                </div>
+                <div
+                    style="text-align: center; padding: 1.25rem; background: white; border-radius: var(--radius); box-shadow: var(--shadow); border-left: 4px solid #10b981;">
+                    <div style="font-weight: 600; color: #10b981; font-size: 1rem;">X-Ray Telemetry</div>
+                    <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem;">Per-step latency tracking</div>
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.5rem;">Iteration & quality metrics</div>
+                </div>
+            </div>
+
+            <!-- API Endpoint -->
+            <div
+                style="margin-top: 2rem; padding: 1.25rem; background: rgba(139, 92, 246, 0.05); border: 1px solid rgba(139, 92, 246, 0.2); border-radius: var(--radius);">
+                <h4
+                    style="font-size: 1rem; color: #8b5cf6; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span>🔌</span> API Endpoint
+                </h4>
+                <div class="endpoint" style="background: white;">
+                    <span class="method post">POST</span>
+                    <span class="path">/api/investigate</span>
+                    <span class="desc">Run investigation agent on uploaded documents</span>
+                </div>
+                <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.75rem;">
+                    <strong>Request:</strong> <code style="background: #f1f5f9; padding: 0.1rem 0.3rem; border-radius: 3px;">{"mission": "Identify all legal risks...", "model": "gemini-2.0-flash"}</code>
+                </div>
+            </div>
+        </section>
+
+        <!-- Connecting Arrow -->
+        <div
+            style="text-align: center; font-size: 2rem; color: var(--text-light); margin-top: -2rem; margin-bottom: -0.5rem; position: relative; z-index: 10;">
+            ↓
+        </div>
+
+        <!-- Stage 5: SQL Intelligence Layer -->
+        <section id="sql-sandbox" class="flow-section"
+            style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 2px solid #10b981; margin-bottom: 2rem;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 0.5rem; margin-bottom: 1rem;">
+                <h2 style="margin: 0; color: var(--text);">SQL Intelligence Layer</h2>
+            </div>
+            <p
+                style="text-align: center; color: var(--text-light); margin-bottom: 2rem; max-width: 800px; margin-left: auto; margin-right: auto;">
+                Bring Your Own Database (BYOD) with natural language queries. Universal SQL Builder supports multiple
+                ingestion strategies with read-only security enforcement.
+            </p>
+
+            <div class="card border-0 shadow-sm bg-light mb-4">
+                <div class="card-body font-monospace text-center py-4">
+                    <span class="badge mb-3" style="background: #10b981;">SQL Sandbox Flow</span>
+                    <div class="flow-diagram">
+                        <div class="flow-node input">
+                            <div class="icon">📂</div>
+                            <div class="label">User Upload</div>
+                            <div class="sublabel">.db / .sql / .csv / .xlsx</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process" style="border-color: #10b981; background: #ecfdf5;">
+                            <div class="icon">🔍</div>
+                            <div class="label">Format Detection</div>
+                            <div class="sublabel">Universal SQL Builder</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process" style="border-color: #10b981; background: #d1fae5;">
+                            <div class="icon">🔒</div>
+                            <div class="label">SQLite Instance</div>
+                            <div class="sublabel">Read-Only Mode</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process" style="border-color: #8b5cf6; background: #f5f3ff;">
+                            <div class="icon">🤖</div>
+                            <div class="label">SQL Agent</div>
+                            <div class="sublabel">LangChain + LLM</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node output">
+                            <div class="icon">📊</div>
+                            <div class="label">Results + SQL</div>
+                            <div class="sublabel">Glass Box AI</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ingestion Strategies -->
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 2rem;">
+                <div
+                    style="text-align: center; padding: 1.25rem; background: white; border-radius: var(--radius); box-shadow: var(--shadow); border-left: 4px solid #3b82f6;">
+                    <div style="font-weight: 600; color: #3b82f6; font-size: 1rem;">Native SQLite</div>
+                    <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem;">.db, .sqlite,
+                        .sqlite3</div>
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.5rem;">Direct read-only URI
+                        mode</div>
+                </div>
+                <div
+                    style="text-align: center; padding: 1.25rem; background: white; border-radius: var(--radius); box-shadow: var(--shadow); border-left: 4px solid #f59e0b;">
+                    <div style="font-weight: 600; color: #f59e0b; font-size: 1rem;">SQL Dump Rehydration</div>
+                    <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem;">.sql files</div>
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.5rem;">Temp DB from
+                        executescript()</div>
+                </div>
+                <div
+                    style="text-align: center; padding: 1.25rem; background: white; border-radius: var(--radius); box-shadow: var(--shadow); border-left: 4px solid #10b981;">
+                    <div style="font-weight: 600; color: #10b981; font-size: 1rem;">Spreadsheet Translation</div>
+                    <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.25rem;">.csv, .xlsx</div>
+                    <div style="font-size: 0.75rem; color: var(--text-light); margin-top: 0.5rem;">Pandas normalization
+                        → SQLite</div>
+                </div>
+            </div>
+
+            <!-- Security Boundaries -->
+            <div
+                style="margin-top: 2rem; padding: 1.25rem; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: var(--radius);">
+                <h4
+                    style="font-size: 1rem; color: #ef4444; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+                    <span>🛡️</span> Security Boundaries
+                </h4>
+                <div
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; font-size: 0.85rem;">
+                    <div><span style="color: #10b981;">✓</span> Read-Only URI: <code
+                            style="background: #f1f5f9; padding: 0.1rem 0.3rem; border-radius: 3px;">?mode=ro&uri=true</code>
+                    </div>
+                    <div><span style="color: #10b981;">✓</span> 50MB upload limit</div>
+                    <div><span style="color: #10b981;">✓</span> 5s query timeout</div>
+                    <div><span style="color: #10b981;">✓</span> 1000 row result limit</div>
+                    <div><span style="color: #ef4444;">✗</span> No DML (INSERT/UPDATE/DELETE blocked)</div>
+                    <div><span style="color: #10b981;">✓</span> Session-scoped ephemeral storage</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Visual Engineering Pipelines -->
+        <h2 id="engineering" style="text-align: center; margin-bottom: 2rem;">Engineering Pipelines</h2>
+
+        <!-- CI/CD Pipeline Visual -->
+        <div class="flow-section" style="background: var(--surface);">
+            <h3 style="text-align: center; margin-bottom: 1rem; font-size: 1.25rem;">🚀 CI/CD Automation Pipeline
+                (Designed and Implemented by Me)</h3>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem; font-size: 0.95rem;">
+                I designed and implemented a fully automated CI/CD pipeline that takes MegaDoc from commit to production
+                on GCP with DevSecOps (gitleaks, bandit, safety), quality gates, and zero-downtime deploys. This is the same
+                pipeline I use for my own projects and can adapt for client or employer environments.
+            </p>
+
+            <div class="card border-0 shadow-sm bg-light mb-4">
+                <div class="card-body font-monospace text-center text-primary py-4">
+                    <span class="badge bg-primary mb-3">CI/CD Flow (11 Stages)</span>
+                    <div class="flow-diagram" style="flex-wrap: wrap; justify-content: center;">
+                        <div class="flow-node input">
+                            <div class="label">Code Push</div>
+                            <div class="sublabel">GitHub Main</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process">
+                            <div class="label">Security Scan</div>
+                            <div class="sublabel">gitleaks+bandit</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process">
+                            <div class="label">Quality Gate</div>
+                            <div class="sublabel">black+flake8</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process">
+                            <div class="label">Test Matrix</div>
+                            <div class="sublabel">Py3.10/3.11</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process" style="background: linear-gradient(135deg, #f472b6, #ec4899);">
+                            <div class="label">Codecov</div>
+                            <div class="sublabel">Coverage</div>
+                        </div>
+                    </div>
+                    <div class="flow-diagram" style="flex-wrap: wrap; justify-content: center; margin-top: 1rem;">
+                        <div class="flow-node process" style="background: linear-gradient(135deg, #60a5fa, #3b82f6);">
+                            <div class="label">Docker Scan</div>
+                            <div class="sublabel">Trivy</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process" style="background: linear-gradient(135deg, #fbbf24, #f59e0b);">
+                            <div class="label">Benchmark</div>
+                            <div class="sublabel">Latency/Perf</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process">
+                            <div class="label">Smoke Test</div>
+                            <div class="sublabel">E2E Health</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node process" style="background: linear-gradient(135deg, #a78bfa, #8b5cf6);">
+                            <div class="label">Release</div>
+                            <div class="sublabel">Changelog</div>
+                        </div>
+                        <div class="flow-arrow">→</div>
+                        <div class="flow-node output">
+                            <div class="label">Deploy</div>
+                            <div class="sublabel">GCP + nginx</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PR Workflows -->
+            <div class="card border-0 shadow-sm bg-light mb-5">
+                <div class="card-body font-monospace text-center py-4" style="background: linear-gradient(135deg, #fef3c7, #fde68a);">
+                    <span class="badge mb-3" style="background: #f59e0b;">PR Workflows</span>
+                    <div class="flow-diagram" style="flex-wrap: wrap; justify-content: center;">
+                        <div class="flow-node input" style="background: linear-gradient(135deg, #6366f1, #4f46e5);">
+                            <div class="label">Pull Request</div>
+                            <div class="sublabel">Feature Branch</div>
+                        </div>
+                        <div class="flow-arrow" style="color: #92400e;">→</div>
+                        <div class="flow-node process" style="background: linear-gradient(135deg, #f97316, #ea580c);">
+                            <div class="label">Prompt Track</div>
+                            <div class="sublabel">Diff Report</div>
+                        </div>
+                        <div class="flow-arrow" style="color: #92400e;">→</div>
+                        <div class="flow-node process" style="background: linear-gradient(135deg, #a855f7, #9333ea);">
+                            <div class="label">Safety Evals</div>
+                            <div class="sublabel">30 Tests</div>
+                        </div>
+                        <div class="flow-arrow" style="color: #92400e;">→</div>
+                        <div class="flow-node output" style="background: linear-gradient(135deg, #22c55e, #16a34a);">
+                            <div class="label">PR Comment</div>
+                            <div class="sublabel">Pass/Fail</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <p
+                style="text-align: center; font-size: 0.95rem; color: var(--text); margin-top: 1rem; margin-bottom: 2rem; max-width: 800px; margin-left: auto; margin-right: auto;">
+                Every push to main triggers a GitHub Actions workflow that runs security scans (gitleaks, bandit, safety),
+                quality gates, and smoke tests before deploying to GCP VM with nginx reverse proxy and Let's Encrypt SSL.
+            </p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                <!-- GitHub Features -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4" style="background: var(--bg); border-radius: var(--radius);">
+                        <h4 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--primary);">CI/CD Pipeline
+                            (11 Stages)</h4>
+                        <ul
+                            style="font-size: 0.9rem; color: var(--text-light); list-style: none; padding-left: 0; margin-bottom: 0;">
+                            <li style="margin-bottom: 0.5rem;"><strong>Security:</strong> gitleaks, bandit, safety, Trivy (Docker).</li>
+                            <li style="margin-bottom: 0.5rem;"><strong>Quality:</strong> black, flake8, isort, Codecov coverage.</li>
+                            <li style="margin-bottom: 0.5rem;"><strong>Testing:</strong> Matrix (Py3.10/3.11), smoke tests, benchmarks.</li>
+                            <li><strong>Release:</strong> release-please auto-changelog + semantic versioning.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- PR Workflows -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4" style="background: var(--bg); border-radius: var(--radius);">
+                        <h4 style="font-size: 1.1rem; margin-bottom: 1rem; color: #f59e0b;">PR Automation
+                            Workflows</h4>
+                        <ul
+                            style="font-size: 0.9rem; color: var(--text-light); list-style: none; padding-left: 0; margin-bottom: 0;">
+                            <li style="margin-bottom: 0.5rem;"><strong>Prompt Tracking:</strong> Detects prompt changes, posts diff report.</li>
+                            <li style="margin-bottom: 0.5rem;"><strong>Safety Evals:</strong> 30 adversarial tests on every PR.</li>
+                            <li style="margin-bottom: 0.5rem;"><strong>PR Comments:</strong> Auto-posts pass/fail with checklist.</li>
+                            <li><strong>Branch Protection:</strong> Required reviews + status checks.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Advanced Deployment -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4" style="background: var(--bg); border-radius: var(--radius);">
+                        <h4 style="font-size: 1.1rem; margin-bottom: 1rem; color: #8b5cf6;">Zero-Downtime Deployment</h4>
+                        <ul
+                            style="font-size: 0.9rem; color: var(--text-light); list-style: none; padding-left: 0; margin-bottom: 0;">
+                            <li style="margin-bottom: 0.5rem;"><strong>Staging Gate:</strong> Staging must pass before
+                                Production deploy.</li>
+                            <li style="margin-bottom: 0.5rem;"><strong>PID-Based Management:</strong> Graceful process
+                                restart with health checks.</li>
+                            <li><strong>HTTPS Auto-Config:</strong> Let's Encrypt with auto-renewal.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Governance -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4" style="background: var(--bg); border-radius: var(--radius);">
+                        <h4 style="font-size: 1.1rem; margin-bottom: 1rem; color: #10b981;">Governance & Auditability
+                        </h4>
+                        <ul
+                            style="font-size: 0.9rem; color: var(--text-light); list-style: none; padding-left: 0; margin-bottom: 0;">
+                            <li style="margin-bottom: 0.5rem;"><strong>Full Traceability:</strong> Commit → PR → Jira →
+                                Build → Deploy link.</li>
+                            <li><strong>Policy as Code:</strong> Security configs version-controlled and validated.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- Governance & Control Section -->
+        <div id="governance" class="flow-section" style="background: var(--surface);">
+            <h2 style="text-align: center; margin-bottom: 2rem;">Zero Trust Security & Governance</h2>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem; font-size: 0.95rem;">
+                <strong>Defense in Depth:</strong> In the current demo, the Zero Trust controls are simulated and
+                validated in design; the reference deployment uses Cloud Armor, Istio, and mTLS in GKE Autopilot.
+            </p>
+
+            <!-- Guardrails Visual -->
+            <div class="d-flex justify-content-between align-items-center my-4" style="padding: 2rem 0;">
+                <div class="rounded-circle bg-light border p-3 d-flex flex-column align-items-center justify-content-center"
+                    style="width: 80px; height: 80px;">
+                    <small style="font-size: 0.7rem; margin-top: 0.25rem; color: var(--text);">Edge</small>
+                </div>
+                <div class="flex-grow-1 border-top border-2 mx-2" style="border-color: var(--border) !important;"></div>
+                <div class="rounded-circle bg-white border border-primary p-3 d-flex flex-column align-items-center justify-content-center"
+                    style="width: 80px; height: 80px;">
+                    <small style="font-size: 0.7rem; margin-top: 0.25rem; color: var(--text);">Gateway</small>
+                </div>
+                <div class="flex-grow-1 border-top border-2 mx-2" style="border-color: var(--border) !important;"></div>
+                <div class="rounded-circle bg-light border p-3 d-flex flex-column align-items-center justify-content-center"
+                    style="width: 80px; height: 80px;">
+                    <small style="font-size: 0.7rem; margin-top: 0.25rem; color: var(--text);">Model</small>
+                </div>
+                <div class="flex-grow-1 border-top border-2 mx-2" style="border-color: var(--border) !important;"></div>
+                <div class="rounded-circle bg-white border border-primary p-3 d-flex flex-column align-items-center justify-content-center"
+                    style="width: 80px; height: 80px;">
+                    <small style="font-size: 0.7rem; margin-top: 0.25rem; color: var(--text);">Curator</small>
+                </div>
+                <div class="flex-grow-1 border-top border-2 mx-2" style="border-color: var(--border) !important;"></div>
+                <div class="rounded-circle bg-white border border-primary p-3 d-flex flex-column align-items-center justify-content-center"
+                    style="width: 80px; height: 80px;">
+                    <small style="font-size: 0.7rem; margin-top: 0.25rem; color: var(--text);">Output</small>
+                </div>
+            </div>
+
+            <!-- Detailed Security Specs -->
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
+
+                <!-- Infrastructure Security (New) -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-3">
+                        <h3
+                            style="color: var(--text); margin-bottom: 0.75rem; font-size: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                            Infrastructure</h3>
+                        <div style="margin-bottom: 0.75rem;">
+                            <strong style="color: var(--primary); font-size: 0.85rem;">Network:</strong>
+                            <ul
+                                style="color: var(--text-light); font-size: 0.85rem; margin-top: 0.25rem; list-style: none; padding-left: 0; margin-bottom: 0;">
+                                <li style="margin-bottom: 0.25rem;">Cloud Armor (WAF)</li>
+                                <li style="margin-bottom: 0.25rem;">DDoS Protection</li>
+                                <li>Private VPC</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <strong style="color: var(--success); font-size: 0.85rem;">Zero Trust:</strong>
+                            <ul
+                                style="color: var(--text-light); font-size: 0.85rem; margin-top: 0.25rem; list-style: none; padding-left: 0; margin-bottom: 0;">
+                                <li style="margin-bottom: 0.25rem;">mTLS (Istio Mesh)</li>
+                                <li style="margin-bottom: 0.25rem;">Service Identity</li>
+                                <li>Rate Limiting</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Application & AI Guardrails -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-3">
+                        <h3
+                            style="color: var(--text); margin-bottom: 0.75rem; font-size: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                            Application & AI</h3>
+                        <div style="margin-bottom: 0.75rem;">
+                            <strong style="color: var(--primary); font-size: 0.85rem;">Input Guard:</strong>
+                            <ul
+                                style="color: var(--text-light); font-size: 0.85rem; margin-top: 0.25rem; list-style: none; padding-left: 0; margin-bottom: 0;">
+                                <li style="margin-bottom: 0.25rem;">Prompt Injection</li>
+                                <li style="margin-bottom: 0.25rem;">PII Redaction</li>
+                                <li>Magic Byte Check</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <strong style="color: var(--success); font-size: 0.85rem;">Output Guard:</strong>
+                            <ul
+                                style="color: var(--text-light); font-size: 0.85rem; margin-top: 0.25rem; list-style: none; padding-left: 0; margin-bottom: 0;">
+                                <li style="margin-bottom: 0.25rem;">Hallucination Check</li>
+                                <li style="margin-bottom: 0.25rem;">Toxicity Filter</li>
+                                <li>Citation Verify</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compliance & Audit -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-3">
+                        <h3
+                            style="color: var(--text); margin-bottom: 0.75rem; font-size: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">
+                            Compliance</h3>
+                        <div style="margin-bottom: 0.75rem;">
+                            <strong style="color: #ef4444; font-size: 0.85rem;">Data:</strong>
+                            <ul
+                                style="color: var(--text-light); font-size: 0.85rem; margin-top: 0.25rem; list-style: none; padding-left: 0; margin-bottom: 0;">
+                                <li style="margin-bottom: 0.25rem;">Encryption at Rest</li>
+                                <li style="margin-bottom: 0.25rem;">Ephemeral Storage (TTL-based)</li>
+                                <li>Data Sovereignty</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <strong style="color: #f59e0b; font-size: 0.85rem;">Audit:</strong>
+                            <p
+                                style="color: var(--text-light); font-size: 0.85rem; margin-top: 0.25rem; margin-bottom: 0;">
+                                Immutable logs of all AI decisions and access events.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
+
+
+
+
+        <!-- Technology Stack -->
+        <h2 style="text-align: center; margin-bottom: 0.5rem;">Technology Stack</h2>
+        <p
+            style="text-align: center; color: var(--text-light); margin-bottom: 1.5rem; font-size: 0.9rem; max-width: 800px; margin-left: auto; margin-right: auto;">
+            The public demo uses lightweight SQLite and GCS for hosting, but the processing path is stateless and can be
+            swapped to fully ephemeral or enterprise data stores.
+        </p>
+        <div class="tech-grid" style="gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div class="tech-card" style="padding: 1rem;">
+                <h3 style="font-size: 0.95rem; margin-bottom: 0.75rem;">Backend</h3>
+                <ul class="tech-list">
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">Python 3.11+</span></li>
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">Flask</span></li>
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">MarkItDown</span></li>
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">SQLite</span></li>
+                </ul>
+            </div>
+            <div class="tech-card" style="padding: 1rem;">
+                <h3 style="font-size: 0.95rem; margin-bottom: 0.75rem;">AI/NLP</h3>
+                <ul class="tech-list">
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">tiktoken</span></li>
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">scikit-learn</span></li>
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span
+                            class="tech-name">sentence-transformers</span></li>
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">langdetect</span></li>
+                </ul>
+            </div>
+            <div class="tech-card" style="padding: 1rem;">
+                <h3 style="font-size: 0.95rem; margin-bottom: 0.75rem;">Data</h3>
+                <ul class="tech-list">
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">ChromaDB / LanceDB
+                            (Demo)</span></li>
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">Qdrant / PGVector
+                            (Enterprise)</span></li>
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">GCS Hosting</span></li>
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">Embeddings</span></li>
+                </ul>
+                <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.5rem; font-style: italic;">
+                    ChromaDB and LanceDB are used in the demo; Qdrant and pgvector/PostgreSQL are supported as
+                    deployment targets for enterprise environments.
+                </div>
+            </div>
+            <div class="tech-card" style="padding: 1rem;">
+                <h3 style="font-size: 0.95rem; margin-bottom: 0.75rem;">Security</h3>
+                <ul class="tech-list">
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">CSRF Protection</span>
+                    </li>
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">Magic Byte File
+                            Validation</span></li>
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">Rate Limiting</span>
+                    </li>
+                </ul>
+                <div style="font-size: 0.8rem; color: var(--text-light); margin-top: 0.5rem; font-style: italic;">
+                    OWASP Top 10 controls designed into the gateway layer. Air-Gap Ready via pluggable local-inference
+                    path.
+                </div>
+            </div>
+            <div class="tech-card" style="padding: 1rem;">
+                <h3 style="font-size: 0.95rem; margin-bottom: 0.75rem;">Infrastructure</h3>
+                <ul class="tech-list">
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">GCP Compute Engine</span>
+                    </li>
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">nginx + Let's Encrypt</span></li>
+                    <li style="padding: 0.35rem 0; font-size: 0.85rem;"><span class="tech-name">GitHub Actions CI/CD</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <!-- Enterprise Cloud-Native Architecture -->
+        <!-- Enterprise Cloud-Native Architecture -->
+        <h2 id="enterprise-arch" style="text-align: center; margin-bottom: 0.5rem;">Target Enterprise Architecture
+            (Reference)</h2>
+        <p
+            style="text-align: center; color: var(--text-light); margin-bottom: 2rem; max-width: 800px; margin-left: auto; margin-right: auto;">
+            <span class="badge bg-warning text-dark me-2">Blueprint</span>
+            This reference architecture is what I use to discuss trade-offs and adaptation paths when aligning with new
+            environments and constraints. This blueprint demonstrates how the system scales for
+            <strong>enterprise workloads (10k+ QPS)</strong>.
+        </p>
+
+        <!-- Event-Driven Ingestion -->
+        <div class="flow-section" style="margin-bottom: 2rem;">
+            <h3 style="text-align: center; margin-bottom: 1rem; font-size: 1.25rem;">⚡ Event-Driven Ingestion (Kafka +
+                GKE)</h3>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem; font-size: 0.95rem;">
+                I designed this ingestion backbone using Kafka + GKE to handle large, bursty document flows from
+                enterprise systems (SharePoint, S3, etc.).
+            </p>
+
+            <div
+                style="display: flex; align-items: center; justify-content: center; gap: 2rem; flex-wrap: wrap; margin: 2rem 0;">
+                <div style="text-align: center;">
+                    <div
+                        style="background: linear-gradient(135deg, #3b82f6 0%, var(--primary) 100%); color: white; padding: 1.5rem 2rem; border-radius: 12px; box-shadow: var(--shadow); min-width: 150px;">
+                        <div style="font-weight: 600; font-size: 1.1rem;">Connectors</div>
+                        <div style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem;">SharePoint/S3</div>
+                    </div>
+                </div>
+
+                <div style="font-size: 2rem; color: var(--text-light);">→</div>
+
+                <div style="text-align: center;">
+                    <div
+                        style="background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%); color: white; padding: 1.5rem 2rem; border-radius: 12px; box-shadow: var(--shadow); min-width: 150px;">
+                        <div style="font-weight: 600; font-size: 1.1rem;">Apache Kafka</div>
+                        <div style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem;">Event Backbone</div>
+                    </div>
+                </div>
+
+                <div style="font-size: 2rem; color: var(--text-light);">→</div>
+
+                <div style="text-align: center;">
+                    <div
+                        style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 1.5rem 2rem; border-radius: 12px; box-shadow: var(--shadow); min-width: 150px;">
+                        <div style="font-weight: 600; font-size: 1.1rem;">Ingestion Pods</div>
+                        <div style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem;">GKE Autopilot</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- HA Inference Cluster -->
+        <div class="flow-section" style="background: var(--surface);">
+            <h3 style="text-align: center; margin-bottom: 1rem; font-size: 1.25rem;">🚀 HA Inference Cluster (Istio +
+                vLLM)</h3>
+            <p style="text-align: center; color: var(--text-light); margin-bottom: 2rem; font-size: 0.95rem;">
+                Zero-trust service mesh with auto-scaling inference endpoints
+            </p>
+
+            <div
+                style="display: flex; align-items: center; justify-content: center; gap: 2rem; flex-wrap: wrap; margin: 2rem 0;">
+                <div style="text-align: center;">
+                    <div
+                        style="background: white; color: var(--text); padding: 1.5rem 2rem; border-radius: 12px; box-shadow: var(--shadow); min-width: 150px; border: 1px solid var(--border);">
+                        <div style="font-weight: 600; font-size: 1.1rem;">Global LB</div>
+                        <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.25rem;">Multi-Region
+                        </div>
+                    </div>
+                </div>
+
+                <div style="font-size: 2rem; color: var(--text-light);">→</div>
+
+                <div style="text-align: center;">
+                    <div
+                        style="background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%); color: white; padding: 1.5rem 2rem; border-radius: 12px; box-shadow: var(--shadow); min-width: 150px;">
+                        <div style="font-weight: 600; font-size: 1.1rem;">Istio Gateway</div>
+                        <div style="font-size: 0.85rem; opacity: 0.9; margin-top: 0.25rem;">mTLS / Rate Limit</div>
+                    </div>
+                </div>
+
+                <div style="font-size: 2rem; color: var(--text-light);">→</div>
+
+                <div style="text-align: center;">
+                    <div
+                        style="background: white; color: var(--text); padding: 1.5rem 2rem; border-radius: 12px; box-shadow: var(--shadow); min-width: 150px; border: 1px solid var(--border);">
+                        <div style="font-weight: 600; font-size: 1.1rem;">Serving Pods</div>
+                        <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.25rem;">vLLM / KEDA
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Operational Excellence: Observability & FinOps -->
+        <div class="flow-section" style="margin-bottom: 2rem;">
+            <h3 style="text-align: center; margin-bottom: 1.5rem; font-size: 1.25rem;">Operational Excellence:
+                Observability & FinOps</h3>
+            <div
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+
+                <!-- Observability Card -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4" style="background: #f8fafc; border-radius: var(--radius);">
+                        <h4 style="font-size: 1.1rem; margin-bottom: 1rem; color: var(--primary);">📊 Full-Stack
+                            Observability</h4>
+                        <ul style="list-style: none; padding: 0; margin: 0;">
+                            <li style="margin-bottom: 0.75rem; display: flex; align-items: start; gap: 0.5rem;">
+                                <span style="color: var(--success);">✓</span>
+                                <div>
+                                    <strong>Golden Signals: </strong>
+                                    <span style="font-size: 0.85rem; color: var(--text-light);">Latency (P95/P99),
+                                        Error Rate, Traffic, Saturation.</span>
+                                </div>
+                            </li>
+                            <li style="margin-bottom: 0.75rem; display: flex; align-items: start; gap: 0.5rem;">
+                                <span style="color: var(--success);">✓</span>
+                                <div>
+                                    <strong>AI Metrics: </strong>
+                                    <span style="font-size: 0.85rem; color: var(--text-light);">Time-to-First-Token
+                                        (TTFT), Cache Hit Rate, RAG Retrieval Score.</span>
+                                </div>
+                            </li>
+                            <li style="display: flex; align-items: start; gap: 0.5rem;">
+                                <span style="color: var(--success);">✓</span>
+                                <div>
+                                    <strong>Tracing: </strong>
+                                    <span style="font-size: 0.85rem; color: var(--text-light);">OpenTelemetry for
+                                        end-to-end request tracing.</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- FinOps Card -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4" style="background: #fffbeb; border-radius: var(--radius);">
+                        <h4 style="font-size: 1.1rem; margin-bottom: 1rem; color: #d97706;">💰 FinOps & Cost Strategy
+                        </h4>
+                        <ul style="list-style: none; padding: 0; margin: 0;">
+                            <li style="margin-bottom: 0.75rem; display: flex; align-items: start; gap: 0.5rem;">
+                                <span style="color: #d97706;">✓</span>
+                                <div>
+                                    <strong>Ingest Efficiency: </strong>
+                                    <span style="font-size: 0.85rem; color: var(--text-light);">Spot Instances for
+                                        stateless worker nodes (60% savings).</span>
+                                </div>
+                            </li>
+                            <li style="margin-bottom: 0.75rem; display: flex; align-items: start; gap: 0.5rem;">
+                                <span style="color: #d97706;">✓</span>
+                                <div>
+                                    <strong>Inference Scaling: </strong>
+                                    <span style="font-size: 0.85rem; color: var(--text-light);">Scale-to-Zero policies
+                                        during off-peak hours.</span>
+                                </div>
+                            </li>
+                            <li style="display: flex; align-items: start; gap: 0.5rem;">
+                                <span style="color: #d97706;">✓</span>
+                                <div>
+                                    <strong>Token Optimization: </strong>
+                                    <span style="font-size: 0.85rem; color: var(--text-light);">Semantic Caching reduces
+                                        cost by 30%.</span>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    {% include 'includes/footer.html' %}
+</body>
+
+</html>

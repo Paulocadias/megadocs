@@ -1,0 +1,12 @@
+TransactionID,Date,Account,Category,Amount,Description,Status,Metadata
+TXN-1001,2023-01-15,ACC-999,Software,"1,250.00","Enterprise License, Annual",Cleared,
+TXN-1002,2023-01-16,ACC-888,Travel,450.50,"Flight to NY
+(Seat 12A)",Pending,"{""trip_id"": 555}"
+TXN-1003,2023-01-17,ACC-777,Meals,120.00,"Client Dinner - ""The Steakhouse""",Cleared,
+TXN-1004,2023-01-18,,Misc,0.00,Refund Test,Voided,
+TXN-1005,2023-01-19,ACC-999,Hardware,2599.99,MacBook Pro 16",Cleared,Asset#99
+TXN-1006,2023/01/20,ACC-555,Services,150.00,Cleaning,Posted,
+TXN-1007,2023-01-21,ACC-444,Software,15.99,"Monthly Sub:
+Jira",Failed,
+,,,,,
+TXN-1009,2023-01-23,ACC-333,Travel "Biz",500.00,Conference,Cleared,

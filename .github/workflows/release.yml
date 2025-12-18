@@ -1,0 +1,130 @@
+# =============================================================================
+# MegaDocs Automated Release & Changelog
+# Author: Paulo Dias - AI Tech Lead & Solutions Architect
+# =============================================================================
+# Automates semantic versioning and changelog generation based on commits.
+# Uses Conventional Commits format for automatic version bumping.
+#
+# Commit prefixes:
+#   feat: → Minor version bump (new feature)
+#   fix:  → Patch version bump (bug fix)
+#   feat!: or BREAKING CHANGE: → Major version bump
+# =============================================================================
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: "📦 Release Please"
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: "🔖 Create Release PR / Tag"
+        uses: google-github-actions/release-please-action@v4
+        id: release
+        with:
+          release-type: python
+          package-name: megadocs
+          changelog-types: |
+            [
+              {"type": "feat", "section": "Features", "hidden": false},
+              {"type": "fix", "section": "Bug Fixes", "hidden": false},
+              {"type": "perf", "section": "Performance", "hidden": false},
+              {"type": "refactor", "section": "Refactoring", "hidden": false},
+              {"type": "docs", "section": "Documentation", "hidden": false},
+              {"type": "chore", "section": "Maintenance", "hidden": true},
+              {"type": "test", "section": "Tests", "hidden": true},
+              {"type": "ci", "section": "CI/CD", "hidden": true}
+            ]
+
+      - name: "📝 Release Summary"
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          echo "### 🎉 Release Created" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | ${{ steps.release.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Tag | ${{ steps.release.outputs.tag_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| SHA | ${{ steps.release.outputs.sha }} |" >> $GITHUB_STEP_SUMMARY
+
+  # Build release artifacts when a new version is tagged
+  build-release:
+    name: "📦 Build Release Artifacts"
+    runs-on: ubuntu-latest
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: "📦 Create Release Bundle"
+        run: |
+          VERSION="${{ needs.release-please.outputs.version }}"
+          mkdir -p dist
+
+          # Create source tarball
+          tar -czf dist/megadocs-${VERSION}.tar.gz \
+            --exclude='*.pyc' \
+            --exclude='__pycache__' \
+            --exclude='.git' \
+            --exclude='temp' \
+            --exclude='.env' \
+            --exclude='tests' \
+            src/ static/ requirements.txt README.md
+
+          # Create checksums
+          cd dist
+          sha256sum megadocs-${VERSION}.tar.gz > megadocs-${VERSION}.sha256
+
+      - name: "📤 Upload Release Artifacts"
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.release-please.outputs.tag_name }}
+          files: |
+            dist/megadocs-*.tar.gz
+            dist/megadocs-*.sha256
+
+      - name: "📊 Build Summary"
+        run: |
+          echo "### 📦 Release Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|------|" >> $GITHUB_STEP_SUMMARY
+          for f in dist/*; do
+            SIZE=$(du -h "$f" | cut -f1)
+            echo "| $(basename $f) | $SIZE |" >> $GITHUB_STEP_SUMMARY
+          done
+
+  # Notify about new release
+  notify-release:
+    name: "📢 Notify Release"
+    runs-on: ubuntu-latest
+    needs: [release-please, build-release]
+    if: ${{ needs.release-please.outputs.release_created }}
+    steps:
+      - name: "🎉 Release Notification"
+        run: |
+          echo "## 🎉 MegaDocs v${{ needs.release-please.outputs.version }} Released!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "A new version has been published:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ needs.release-please.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag**: ${{ needs.release-please.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: https://github.com/${{ github.repository }}/releases/tag/${{ needs.release-please.outputs.tag_name }}" >> $GITHUB_STEP_SUMMARY

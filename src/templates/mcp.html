@@ -1,0 +1,438 @@
+{% extends "base.html" %}
+
+{% block title %}MCP Integration - AI Assistant Integration | MegaDoc{% endblock %}
+
+{% block head %}
+<meta name="description"
+    content="Integrate MegaDoc with Claude Desktop, Cursor, VS Code, and other AI assistants via Model Context Protocol (MCP). Secure, rate-limited document conversion for AI agents.">
+<meta name="keywords"
+    content="MCP, Model Context Protocol, Claude Desktop, Cursor, VS Code, Antigravity, AI integration, document conversion API">
+
+<!-- Open Graph -->
+<meta property="og:title" content="MCP Integration - AI Assistant Integration | MegaDoc">
+<meta property="og:description"
+    content="Connect AI assistants to MegaDoc via Model Context Protocol. Supports Claude, Cursor, VS Code, and more.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://megadocs.paulocadias.com/mcp">
+
+<!-- Canonical URL -->
+<link rel="canonical" href="https://megadocs.paulocadias.com/mcp">
+{% endblock %}
+
+{% block content %}
+<div class="docs-page">
+    <!-- Hero -->
+    <section class="hero-section" style="text-align: center; padding: 3rem 0;">
+        <span class="badge">MODEL CONTEXT PROTOCOL</span>
+        <h1 style="font-size: 2.5rem; margin: 1rem 0;">MCP Integration</h1>
+        <p class="subtitle">Connect AI assistants to MegaDoc for automated document conversion</p>
+        <div style="display: flex; gap: 1rem; justify-content: center; margin-top: 2rem; flex-wrap: wrap;">
+            <a href="#quick-start" class="cta-btn cta-btn-primary">Quick Start</a>
+            <a href="#security" class="cta-btn cta-btn-secondary">Security Features</a>
+            <a href="https://github.com/Paulocadias/DOCSsite/blob/main/mcp_server.py" target="_blank"
+                class="cta-btn cta-btn-secondary">View Source</a>
+        </div>
+    </section>
+
+    <!-- Supported IDEs -->
+    <section class="content-section">
+        <h2>Supported AI Assistants & IDEs</h2>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🤖</div>
+                <h3>Claude Desktop</h3>
+                <p>Anthropic's desktop AI assistant with native MCP support</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">💻</div>
+                <h3>Cursor</h3>
+                <p>AI-powered code editor with MCP integration</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🧠</div>
+                <h3>Antigravity</h3>
+                <p>Google DeepMind's coding assistant</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📝</div>
+                <h3>VS Code</h3>
+                <p>With MCP extensions for AI assistance</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- What is MCP -->
+    <section class="content-section">
+        <h2>What is Model Context Protocol?</h2>
+        <p><strong>Model Context Protocol (MCP)</strong> is an open standard that enables AI assistants to securely
+            interact with external tools and data sources. MegaDoc's MCP server allows AI agents to convert documents
+            automatically.</p>
+
+        <div class="info-box"
+            style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white; padding: 1.5rem; border-radius: 12px; margin: 2rem 0;">
+            <h3 style="margin-top: 0;">Why Use MCP?</h3>
+            <ul style="margin: 0; padding-left: 1.5rem;">
+                <li>✅ <strong>Automated Workflows</strong> - AI converts documents without manual upload</li>
+                <li>✅ <strong>Secure Local Processing</strong> - Runs on your machine, no cloud uploads</li>
+                <li>✅ <strong>Rate Limited</strong> - Same protections as REST API</li>
+                <li>✅ <strong>Multi-IDE Support</strong> - Works with Claude, Cursor, VS Code, and more</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Quick Start -->
+    <section class="content-section" id="quick-start">
+        <h2>Quick Start</h2>
+
+        <div class="tabs" style="margin: 2rem 0;">
+            <div class="tab-buttons"
+                style="display: flex; gap: 0.5rem; border-bottom: 2px solid var(--border); margin-bottom: 1.5rem;">
+                <button class="tab-btn active" onclick="showTab('claude')">Claude Desktop</button>
+                <button class="tab-btn" onclick="showTab('cursor')">Cursor</button>
+                <button class="tab-btn" onclick="showTab('vscode')">VS Code</button>
+                <button class="tab-btn" onclick="showTab('antigravity')">Antigravity</button>
+            </div>
+
+            <!-- Claude Tab -->
+            <div id="claude-tab" class="tab-content">
+                <h3>1. Locate Config File</h3>
+                <ul>
+                    <li><strong>Windows:</strong> <code>%APPDATA%\Claude\claude_desktop_config.json</code></li>
+                    <li><strong>Mac:</strong>
+                        <code>~/Library/Application Support/Claude/claude_desktop_config.json</code></li>
+                    <li><strong>Linux:</strong> <code>~/.config/Claude/claude_desktop_config.json</code></li>
+                </ul>
+
+                <h3>2. Add MegaDoc Server</h3>
+                <pre><code>{
+  "mcpServers": {
+    "megadoc": {
+      "command": "python",
+      "args": ["C:\\path\\to\\DocsSite\\mcp_server.py"],
+      "env": {}
+    }
+  }
+}</code></pre>
+
+                <h3>3. Restart Claude Desktop</h3>
+                <p>Close and reopen Claude completely.</p>
+
+                <h3>4. Test It!</h3>
+                <p>Ask Claude: <em>"Convert this PDF to Markdown"</em> and attach a file.</p>
+            </div>
+
+            <!-- Cursor Tab -->
+            <div id="cursor-tab" class="tab-content" style="display: none;">
+                <h3>1. Open MCP Settings</h3>
+                <p>Press <code>Ctrl+Shift+P</code> (or <code>Cmd+Shift+P</code> on Mac) and type "MCP Settings"</p>
+
+                <h3>2. Add Configuration</h3>
+                <pre><code>{
+  "mcpServers": {
+    "megadoc": {
+      "command": "python",
+      "args": ["C:\\path\\to\\DocsSite\\mcp_server.py"]
+    }
+  }
+}</code></pre>
+
+                <h3>3. Reload Window</h3>
+                <p><code>Ctrl+Shift+P</code> → "Reload Window"</p>
+
+                <h3>4. Test It!</h3>
+                <p>Ask Cursor AI to convert a document in your workspace.</p>
+            </div>
+
+            <!-- VS Code Tab -->
+            <div id="vscode-tab" class="tab-content" style="display: none;">
+                <h3>1. Install MCP Extension</h3>
+                <p>Open Extensions (<code>Ctrl+Shift+X</code>) and search for "Model Context Protocol"</p>
+
+                <h3>2. Configure Server</h3>
+                <p>Settings (<code>Ctrl+,</code>) → Search "MCP Servers"</p>
+                <pre><code>{
+  "mcp.servers": {
+    "megadoc": {
+      "command": "python",
+      "args": ["C:\\path\\to\\DocsSite\\mcp_server.py"],
+      "description": "MegaDoc Document Converter"
+    }
+  }
+}</code></pre>
+
+                <h3>3. Reload VS Code</h3>
+                <p>Restart VS Code to activate the MCP server.</p>
+            </div>
+
+            <!-- Antigravity Tab -->
+            <div id="antigravity-tab" class="tab-content" style="display: none;">
+                <h3>1. Access MCP Configuration</h3>
+                <p>Open Antigravity settings → Navigate to "Model Context Protocol" section</p>
+
+                <h3>2. Add Server</h3>
+                <pre><code>{
+  "servers": {
+    "megadoc": {
+      "type": "stdio",
+      "command": "python",
+      "args": ["C:\\path\\to\\DocsSite\\mcp_server.py"],
+      "description": "Document conversion to Markdown"
+    }
+  }
+}</code></pre>
+
+                <h3>3. Restart Antigravity</h3>
+                <p>Restart to load the new MCP server configuration.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Security Features -->
+    <section class="content-section" id="security">
+        <h2>Security & Rate Limiting</h2>
+        <p>The MCP server includes the same enterprise-grade security as the REST API:</p>
+
+        <div class="security-grid"
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin: 2rem 0;">
+            <div class="security-card"
+                style="background: var(--surface); padding: 1.5rem; border-radius: 12px; border-left: 4px solid var(--primary);">
+                <h3 style="margin-top: 0;">🔒 Rate Limiting</h3>
+                <p><strong>20 requests/minute</strong> per process</p>
+                <p style="font-size: 0.9rem; color: var(--text-light);">Same limits as REST API to prevent abuse</p>
+            </div>
+
+            <div class="security-card"
+                style="background: var(--surface); padding: 1.5rem; border-radius: 12px; border-left: 4px solid var(--success);">
+                <h3 style="margin-top: 0;">✅ File Validation</h3>
+                <p><strong>Magic byte verification</strong></p>
+                <p style="font-size: 0.9rem; color: var(--text-light);">Ensures file content matches extension</p>
+            </div>
+
+            <div class="security-card"
+                style="background: var(--surface); padding: 1.5rem; border-radius: 12px; border-left: 4px solid var(--warning);">
+                <h3 style="margin-top: 0;">🛡️ Size Limits</h3>
+                <p><strong>50MB maximum</strong> file size</p>
+                <p style="font-size: 0.9rem; color: var(--text-light);">Triple validation: client, header, actual</p>
+            </div>
+
+            <div class="security-card"
+                style="background: var(--surface); padding: 1.5rem; border-radius: 12px; border-left: 4px solid var(--error);">
+                <h3 style="margin-top: 0;">🚫 Zero Retention</h3>
+                <p><strong>Immediate deletion</strong></p>
+                <p style="font-size: 0.9rem; color: var(--text-light);">Files deleted after conversion</p>
+            </div>
+        </div>
+
+        <div class="alert alert-info" style="margin-top: 2rem;">
+            <strong>Local Processing:</strong> The MCP server runs on your machine, so files never leave your computer.
+            This provides maximum security and privacy.
+        </div>
+    </section>
+
+    <!-- Available Tools -->
+    <section class="content-section">
+        <h2>Available MCP Tools</h2>
+
+        <div class="tool-card"
+            style="background: var(--surface); padding: 1.5rem; border-radius: 12px; margin-bottom: 1.5rem;">
+            <h3><code>convert_document</code></h3>
+            <p>Convert a local file to Markdown or plain text.</p>
+            <h4>Parameters:</h4>
+            <ul>
+                <li><code>file_path</code> (required): Path to the document</li>
+                <li><code>output_format</code> (optional): "markdown" or "text" (default: "markdown")</li>
+            </ul>
+            <h4>Example:</h4>
+            <pre><code>Claude: "Convert report.pdf to Markdown"
+→ Uses convert_document tool
+→ Returns Markdown content</code></pre>
+        </div>
+
+        <div class="tool-card" style="background: var(--surface); padding: 1.5rem; border-radius: 12px;">
+            <h3><code>convert_document_base64</code></h3>
+            <p>Convert a base64-encoded document (for uploaded files).</p>
+            <h4>Parameters:</h4>
+            <ul>
+                <li><code>content</code> (required): Base64-encoded file content</li>
+                <li><code>filename</code> (required): Original filename</li>
+                <li><code>output_format</code> (optional): "markdown" or "text"</li>
+            </ul>
+            <h4>Example:</h4>
+            <pre><code>User uploads file in chat
+→ AI encodes to base64
+→ Uses convert_document_base64
+→ Returns converted content</code></pre>
+        </div>
+    </section>
+
+    <!-- Supported Formats -->
+    <section class="content-section">
+        <h2>Supported File Formats</h2>
+        <table class="format-table" style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: var(--surface); border-bottom: 2px solid var(--border);">
+                    <th style="padding: 1rem; text-align: left;">Category</th>
+                    <th style="padding: 1rem; text-align: left;">Formats</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 1rem;"><strong>Documents</strong></td>
+                    <td style="padding: 1rem;">PDF, Word (.docx, .doc), Text</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 1rem;"><strong>Spreadsheets</strong></td>
+                    <td style="padding: 1rem;">Excel (.xlsx, .xls), CSV</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 1rem;"><strong>Presentations</strong></td>
+                    <td style="padding: 1rem;">PowerPoint (.pptx, .ppt)</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 1rem;"><strong>Images</strong></td>
+                    <td style="padding: 1rem;">JPG, PNG, GIF, BMP (with OCR)</td>
+                </tr>
+                <tr style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 1rem;"><strong>Web</strong></td>
+                    <td style="padding: 1rem;">HTML, JSON, XML</td>
+                </tr>
+                <tr>
+                    <td style="padding: 1rem;"><strong>E-books</strong></td>
+                    <td style="padding: 1rem;">EPUB</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- Use Cases -->
+    <section class="content-section">
+        <h2>Example Use Cases</h2>
+        <div class="use-case-grid" style="display: grid; gap: 1.5rem; margin: 2rem 0;">
+            <div class="use-case-card" style="background: var(--surface); padding: 1.5rem; border-radius: 12px;">
+                <h3>📄 Document Analysis (Claude)</h3>
+                <p><em>"Analyze this contract PDF and summarize key points"</em></p>
+                <p style="font-size: 0.9rem; color: var(--text-light);">Claude converts PDF → Analyzes Markdown →
+                    Provides summary</p>
+            </div>
+
+            <div class="use-case-card" style="background: var(--surface); padding: 1.5rem; border-radius: 12px;">
+                <h3>💻 Code Extraction (Cursor)</h3>
+                <p><em>"Extract code snippets from this documentation PDF"</em></p>
+                <p style="font-size: 0.9rem; color: var(--text-light);">Cursor converts → Parses code blocks → Inserts
+                    into editor</p>
+            </div>
+
+            <div class="use-case-card" style="background: var(--surface); padding: 1.5rem; border-radius: 12px;">
+                <h3>📊 Data Processing (Antigravity)</h3>
+                <p><em>"Process Excel data for analysis"</em></p>
+                <p style="font-size: 0.9rem; color: var(--text-light);">Converts → Extracts tables → Generates analysis
+                    code</p>
+            </div>
+
+            <div class="use-case-card" style="background: var(--surface); padding: 1.5rem; border-radius: 12px;">
+                <h3>📝 Documentation (VS Code)</h3>
+                <p><em>"Convert these Word docs to Markdown for our wiki"</em></p>
+                <p style="font-size: 0.9rem; color: var(--text-light);">Batch converts → Formats for documentation</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Resources -->
+    <section class="content-section">
+        <h2>Resources & Documentation</h2>
+        <div class="resource-links"
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; margin: 2rem 0;">
+            <a href="https://github.com/Paulocadias/DOCSsite/blob/main/MCP_SETUP.md" class="resource-link"
+                style="display: block; padding: 1rem; background: var(--surface); border-radius: 8px; text-decoration: none; color: var(--text); border: 1px solid var(--border);">
+                <strong>📖 Full Setup Guide</strong>
+                <p style="font-size: 0.85rem; color: var(--text-light); margin: 0.5rem 0 0 0;">Complete installation
+                    instructions</p>
+            </a>
+            <a href="https://modelcontextprotocol.io/" target="_blank" class="resource-link"
+                style="display: block; padding: 1rem; background: var(--surface); border-radius: 8px; text-decoration: none; color: var(--text); border: 1px solid var(--border);">
+                <strong>🔗 MCP Specification</strong>
+                <p style="font-size: 0.85rem; color: var(--text-light); margin: 0.5rem 0 0 0;">Official protocol
+                    documentation</p>
+            </a>
+            <a href="https://github.com/Paulocadias/DOCSsite/blob/main/mcp_server.py" target="_blank"
+                class="resource-link"
+                style="display: block; padding: 1rem; background: var(--surface); border-radius: 8px; text-decoration: none; color: var(--text); border: 1px solid var(--border);">
+                <strong>💻 Source Code</strong>
+                <p style="font-size: 0.85rem; color: var(--text-light); margin: 0.5rem 0 0 0;">View the MCP server
+                    implementation</p>
+            </a>
+            <a href="/api/docs" class="resource-link"
+                style="display: block; padding: 1rem; background: var(--surface); border-radius: 8px; text-decoration: none; color: var(--text); border: 1px solid var(--border);">
+                <strong>🔌 REST API Docs</strong>
+                <p style="font-size: 0.85rem; color: var(--text-light); margin: 0.5rem 0 0 0;">Alternative API access
+                    method</p>
+            </a>
+        </div>
+    </section>
+</div>
+
+<script>
+    function showTab(tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.style.display = 'none';
+        });
+
+        // Remove active class from all buttons
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        // Show selected tab
+        document.getElementById(tabName + '-tab').style.display = 'block';
+
+        // Add active class to clicked button
+        event.target.classList.add('active');
+    }
+</script>
+
+<style>
+    .tab-btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        font-size: 0.95rem;
+        color: var(--text-light);
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+        color: var(--text);
+        background: var(--surface);
+    }
+
+    .tab-btn.active {
+        color: var(--primary);
+        border-bottom-color: var(--primary);
+        font-weight: 600;
+    }
+
+    .alert-info {
+        background: #eff6ff;
+        border-left: 4px solid #2563eb;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        color: #1e40af;
+    }
+
+    pre {
+        background: var(--bg);
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+        border: 1px solid var(--border);
+    }
+
+    code {
+        font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+        font-size: 0.9em;
+    }
+</style>
+{% endblock %}
