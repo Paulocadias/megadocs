@@ -86,7 +86,7 @@ jobs:
           safety check || true
 
       - name: Upload Security Results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: security-scan-results
@@ -152,7 +152,7 @@ jobs:
           safety check --output json > safety-report.json || true
 
       - name: Upload Security Reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: security-reports
           path: |
@@ -226,7 +226,7 @@ jobs:
           fi
 
       - name: Upload Test Reports
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: test-reports-${{ matrix.python-version }}-${{ matrix.test-type }}
@@ -333,7 +333,7 @@ jobs:
             src/ static/ requirements.txt
 
       - name: Upload Release Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-${{ steps.version.outputs.version }}
           path: dist/
@@ -452,7 +452,7 @@ jobs:
           fi
 
       - name: Upload Benchmark Results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: benchmark-results
           path: benchmark-results.json
