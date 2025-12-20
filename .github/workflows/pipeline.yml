@@ -628,13 +628,21 @@ jobs:
 
             # Ensure clean deployment directory
             if [ -d ~/megadocs ]; then
+              # Fix permissions (may have been created by different user/sudo)
+              sudo chown -R $(whoami):$(whoami) ~/megadocs 2>/dev/null || true
               cd ~/megadocs
               if [ -d .git ]; then
                 git fetch origin main
-                git reset --hard origin/main
+                git reset --hard origin/main || {
+                  echo ">>> Git reset failed, re-cloning..."
+                  cd ~
+                  sudo rm -rf ~/megadocs
+                  git clone https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git ~/megadocs
+                  cd ~/megadocs
+                }
               else
                 cd ~
-                rm -rf ~/megadocs
+                sudo rm -rf ~/megadocs
                 git clone https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git ~/megadocs
                 cd ~/megadocs
               fi
@@ -643,10 +651,10 @@ jobs:
               cd ~/megadocs
             fi
 
-            # Remove non-production files/folders
-            rm -rf docs/ tests/ temp/ .github/
-            rm -f *.md projectplan.md README.md DEPLOY.md TESTING.md
-            rm -f .gitignore .flake8 .pre-commit-config.yaml
+            # Remove non-production files/folders (use sudo in case of permission issues)
+            sudo rm -rf docs/ tests/ temp/ .github/ 2>/dev/null || true
+            sudo rm -f *.md projectplan.md README.md DEPLOY.md TESTING.md 2>/dev/null || true
+            sudo rm -f .gitignore .flake8 .pre-commit-config.yaml 2>/dev/null || true
 
             # Production environment config
             cat > .env << 'ENVEOF'
