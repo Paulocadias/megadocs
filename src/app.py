@@ -56,4 +56,4 @@ if __name__ == "__main__":
     +--------------------------------------------------------------+
     """)
     debug_mode = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
-    app.run(debug=debug_mode, host="127.0.0.1", port=8080)
+    app.run(debug=debug_mode, host="0.0.0.0", port=8080)
