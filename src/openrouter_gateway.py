@@ -15,7 +15,66 @@ import requests
 from typing import Dict, Any, Optional, List
 from config import Config
 
+# Circuit breaker for external API resilience
+try:
+    import pybreaker
+    CIRCUIT_BREAKER_AVAILABLE = True
+except ImportError:
+    CIRCUIT_BREAKER_AVAILABLE = False
+    pybreaker = None
+
 logger = logging.getLogger(__name__)
+
+# ============================================================================
+# CIRCUIT BREAKER FOR OPENROUTER API
+# ============================================================================
+# Prevents cascade failures when OpenRouter is down
+# - Opens after 5 consecutive failures
+# - Stays open for 60 seconds before retrying
+# - Fails fast instead of waiting for timeouts
+
+class OpenRouterCircuitBreakerListener(pybreaker.CircuitBreakerListener if CIRCUIT_BREAKER_AVAILABLE else object):
+    """Listener to log circuit breaker state changes."""
+
+    def state_change(self, cb, old_state, new_state):
+        logger.warning(f"OpenRouter circuit breaker: {old_state.name} -> {new_state.name}")
+
+    def failure(self, cb, exc):
+        logger.warning(f"OpenRouter circuit breaker recorded failure: {type(exc).__name__}")
+
+    def success(self, cb):
+        pass  # Don't log every success
+
+# Create circuit breaker instance
+if CIRCUIT_BREAKER_AVAILABLE:
+    openrouter_breaker = pybreaker.CircuitBreaker(
+        fail_max=5,              # Open after 5 failures
+        reset_timeout=60,        # Try again after 60 seconds
+        exclude=[                # Don't count these as failures
+            requests.exceptions.Timeout,  # Timeouts are expected occasionally
+        ],
+        listeners=[OpenRouterCircuitBreakerListener()]
+    )
+    logger.info("OpenRouter circuit breaker initialized (fail_max=5, reset=60s)")
+else:
+    openrouter_breaker = None
+    logger.warning("pybreaker not installed - circuit breaker disabled")
+
+
+def get_circuit_breaker_status() -> Dict[str, Any]:
+    """Get current circuit breaker status for monitoring."""
+    if not CIRCUIT_BREAKER_AVAILABLE or not openrouter_breaker:
+        return {"enabled": False, "reason": "pybreaker not installed"}
+
+    state_name = openrouter_breaker.current_state
+    return {
+        "enabled": True,
+        "state": str(state_name),
+        "fail_count": openrouter_breaker.fail_counter,
+        "fail_max": openrouter_breaker.fail_max,
+        "reset_timeout": openrouter_breaker.reset_timeout,
+        "is_open": state_name == pybreaker.STATE_OPEN if hasattr(pybreaker, 'STATE_OPEN') else False
+    }
 
 # ============================================================================
 # PRICING SYSTEM (v3.0) - Cost tracking for CFO Hook
@@ -309,14 +368,33 @@ Remember: You can ONLY answer based on the content between the CONTEXT markers a
     
     # Track latency
     start_time = time.time()
-    
+
+    # Check circuit breaker state before making request
+    if CIRCUIT_BREAKER_AVAILABLE and openrouter_breaker:
+        if openrouter_breaker.current_state == pybreaker.STATE_OPEN:
+            logger.warning("OpenRouter circuit breaker is OPEN - failing fast")
+            return {
+                "error": "AI service temporarily unavailable",
+                "error_type": "circuit_open",
+                "retry_after": 60,
+                "latency_ms": 0,
+                "retryable": True
+            }
+
     try:
-        response = requests.post(
-            Config.OPENROUTER_API_URL,
-            json=payload,
-            headers=headers,
-            timeout=30
-        )
+        # Make API call (wrapped by circuit breaker if available)
+        def make_request():
+            return requests.post(
+                Config.OPENROUTER_API_URL,
+                json=payload,
+                headers=headers,
+                timeout=30
+            )
+
+        if CIRCUIT_BREAKER_AVAILABLE and openrouter_breaker:
+            response = openrouter_breaker.call(make_request)
+        else:
+            response = make_request()
         
         latency_ms = int((time.time() - start_time) * 1000)
         
@@ -402,6 +480,18 @@ Remember: You can ONLY answer based on the content between the CONTEXT markers a
         raise requests.exceptions.RequestException("Request timeout")
     except requests.exceptions.RequestException as e:
         logger.error(f"OpenRouter request failed: {e}")
+        raise
+    except Exception as e:
+        # Handle circuit breaker open state
+        if CIRCUIT_BREAKER_AVAILABLE and "CircuitBreakerError" in type(e).__name__:
+            logger.warning("OpenRouter circuit breaker prevented request (circuit open)")
+            return {
+                "error": "AI service temporarily unavailable",
+                "error_type": "circuit_open",
+                "retry_after": 60,
+                "latency_ms": int((time.time() - start_time) * 1000),
+                "retryable": True
+            }
         raise
 
 
