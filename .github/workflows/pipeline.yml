@@ -502,7 +502,7 @@ jobs:
 
       - name: Deploy to Staging
         if: steps.check-ssh.outputs.configured == 'true'
-        uses: appleboy/ssh-action@v1.0.0
+        uses: appleboy/ssh-action@v1.2.4
         timeout-minutes: 25
         with:
           host: ${{ secrets.GCP_HOST }}
@@ -615,7 +615,7 @@ jobs:
 
       - name: Deploy to Production
         if: steps.check-ssh.outputs.configured == 'true'
-        uses: appleboy/ssh-action@v1.0.0
+        uses: appleboy/ssh-action@v1.2.4
         timeout-minutes: 25
         with:
           host: ${{ secrets.GCP_HOST }}
