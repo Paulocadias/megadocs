@@ -17,45 +17,47 @@
 | Capability | Implementation |
 |------------|----------------|
 | **RAG Pipeline** | ChromaDB + domain-aware retrieval (Legal, Medical, Technical) |
+| **SQL Sandbox** | Natural language to SQL with read-only enforcement |
 | **Agentic Workflows** | LangGraph StateGraph with self-correction loops |
-| **Cost Optimization** | 85% savings via intelligent model routing |
+| **Cost Optimization** | 99% savings via intelligent model routing (Gemini Flash) |
 | **Observability** | X-Ray middleware (TTFT, latency, token tracking) |
+| **Security** | Cloudflare DDoS, OWASP headers, Circuit Breaker |
 | **Crash Prevention** | Circuit breaker, memory guards, request limiting |
-| **CI/CD** | 11-stage pipeline with security scans and benchmarks |
+| **CI/CD** | 11-stage pipeline with security scans and Dependabot |
 
 ---
 
 ## Architecture
 
 ```
-                    ┌─────────────────────────────────────────┐
-                    │            FLASK APPLICATION            │
-                    └─────────────────────────────────────────┘
-                                       │
-        ┌──────────────────────────────┼──────────────────────────────┐
-        │                              │                              │
-        ▼                              ▼                              ▼
-┌───────────────┐            ┌─────────────────┐            ┌─────────────────┐
-│   Document    │            │    RAG Chat     │            │   Investigator  │
-│   Converter   │            │    Pipeline     │            │      Agent      │
-│               │            │                 │            │                 │
-│  PDF/DOCX/    │            │  ChromaDB +     │            │  LangGraph +    │
-│  HTML → MD    │            │  OpenRouter     │            │  Web Search     │
-└───────────────┘            └─────────────────┘            └─────────────────┘
-        │                              │                              │
-        └──────────────────────────────┼──────────────────────────────┘
-                                       │
-                    ┌─────────────────────────────────────────┐
-                    │           MIDDLEWARE LAYER              │
-                    │  • X-Ray Observability                  │
-                    │  • Crash Prevention (Circuit Breaker)   │
-                    │  • Smart Router (Model Selection)       │
-                    └─────────────────────────────────────────┘
-                                       │
-                    ┌─────────────────────────────────────────┐
-                    │           OPENROUTER GATEWAY            │
-                    │  Gemini Flash │ DeepSeek │ Claude       │
-                    └─────────────────────────────────────────┘
+                         ┌─────────────────────────────────────────┐
+                         │            FLASK APPLICATION            │
+                         └─────────────────────────────────────────┘
+                                            │
+     ┌──────────────────┬───────────────────┼───────────────────┬──────────────────┐
+     │                  │                   │                   │                  │
+     ▼                  ▼                   ▼                   ▼                  ▼
+┌──────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌──────────┐
+│ Document │    │  RAG Chat   │    │    SQL      │    │Investigator │    │  MCP     │
+│Converter │    │  Pipeline   │    │  Sandbox    │    │   Agent     │    │ Server   │
+│          │    │             │    │             │    │             │    │          │
+│ PDF/DOCX │    │ ChromaDB +  │    │ NL → SQL +  │    │ LangGraph + │    │ Claude   │
+│ HTML→MD  │    │ OpenRouter  │    │ Read-Only   │    │ Web Search  │    │ Desktop  │
+└──────────┘    └─────────────┘    └─────────────┘    └─────────────┘    └──────────┘
+     │                  │                   │                   │                  │
+     └──────────────────┴───────────────────┼───────────────────┴──────────────────┘
+                                            │
+                         ┌─────────────────────────────────────────┐
+                         │           MIDDLEWARE LAYER              │
+                         │  • X-Ray Observability                  │
+                         │  • Crash Prevention (Circuit Breaker)   │
+                         │  • Security Headers (OWASP)             │
+                         └─────────────────────────────────────────┘
+                                            │
+                         ┌─────────────────────────────────────────┐
+                         │           OPENROUTER GATEWAY            │
+                         │  Gemini 2.0 Flash │ Gemini 2.5 Pro      │
+                         └─────────────────────────────────────────┘
 ```
 
 ---
@@ -63,12 +65,12 @@
 ## Key Features
 
 ### Intelligent Model Routing
-Routes queries to optimal models based on complexity, achieving 85% cost savings:
+Routes queries to optimal models based on complexity, achieving 99% cost savings:
 
 ```python
-# Simple queries → Free tier (Gemini Flash)
-# Complex queries → Premium models (GPT-4, Claude)
-router.route(query) → optimal_model
+# All queries → Gemini 2.0 Flash (free tier, high quality)
+# Complex analysis → Gemini 2.5 Pro (premium, when needed)
+# Cost: $0.07 vs $7.11 GPT-4 equivalent = 99% savings
 ```
 
 ### Agentic Investigator
@@ -81,12 +83,28 @@ Decompose → Retrieve → Enrich → Analyze → Validate
              (if quality < 7/10)
 ```
 
+### SQL Sandbox
+Natural language to SQL with security-first design:
+
+- **Upload**: SQLite DB, SQL dump, CSV, Excel files
+- **NL to SQL**: AI converts questions to SQL queries
+- **Read-Only**: DML statements blocked, LIMIT enforced
+- **Schema Explorer**: Visual table/column browser
+
 ### Crash Prevention System
 Protects the 1GB free-tier VM from overload:
 
 - **Concurrent Limiter**: Max 5 requests, 2 heavy operations
 - **Circuit Breaker**: Opens after 5 failures, resets in 60s
 - **Memory Guard**: Triggers GC at 80%, rejects at 92%
+
+### Security Features
+Enterprise-grade protection:
+
+- **Cloudflare**: DDoS protection, WAF, SSL termination
+- **OWASP Headers**: CSP, HSTS, X-Frame-Options, XSS Protection
+- **Input Validation**: Honeypot fields, CSRF tokens
+- **Dependency Scanning**: Dependabot + CodeRabbit reviews
 
 ---
 
@@ -95,10 +113,11 @@ Protects the 1GB free-tier VM from overload:
 | Layer | Technology |
 |-------|------------|
 | **Backend** | Flask 3.0, Gunicorn |
-| **AI/ML** | LangGraph, LangChain, OpenRouter |
-| **Vector DB** | ChromaDB, LanceDB |
-| **Observability** | Custom X-Ray middleware, Prometheus metrics |
-| **CI/CD** | GitHub Actions (11 stages) |
+| **AI/ML** | LangGraph, LangChain, OpenRouter, Gemini |
+| **Vector DB** | ChromaDB (embeddings), SQLite (SQL Sandbox) |
+| **Security** | Cloudflare, pybreaker (Circuit Breaker) |
+| **Observability** | Custom X-Ray middleware |
+| **CI/CD** | GitHub Actions, Dependabot, CodeRabbit |
 | **Infrastructure** | GCP e2-micro (free tier), Docker |
 
 ---
@@ -138,11 +157,14 @@ docker-compose up -d
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/api/convert` | POST | Convert documents to Markdown |
-| `/api/rag/chat` | POST | RAG-powered chat with documents |
+| `/api/chat` | POST | RAG-powered chat with documents |
 | `/api/investigate` | POST | Agentic research workflow |
-| `/api/sql/query` | POST | SQL Sandbox queries |
+| `/api/sql/upload` | POST | Upload database files |
+| `/api/sql/query` | POST | Execute SQL queries |
+| `/api/sql/schema` | GET | Get database schema |
+| `/api/stats` | GET | Platform statistics |
 | `/health` | GET | Health check with system status |
-| `/api/system/status` | GET | Crash prevention metrics |
+| `/api/system/status` | GET | Circuit breaker & memory metrics |
 
 ---
 
@@ -151,19 +173,22 @@ docker-compose up -d
 ```
 megadocs/
 ├── src/
-│   ├── app.py              # Flask application factory
-│   ├── routes.py           # API endpoints
-│   ├── agents/             # LangGraph agentic workflows
-│   │   └── investigator.py # 5-stage research agent
-│   ├── middleware/         # Request processing
-│   │   ├── xray.py         # Observability middleware
+│   ├── app.py                   # Flask application factory
+│   ├── routes.py                # API endpoints
+│   ├── sql_sandbox.py           # SQL Sandbox (NL→SQL, read-only)
+│   ├── agents/
+│   │   └── investigator.py      # 5-stage LangGraph agent
+│   ├── middleware/
+│   │   ├── xray.py              # Observability middleware
 │   │   └── crash_prevention.py  # Circuit breaker + memory guard
 │   ├── openrouter_gateway.py    # Multi-model AI gateway
-│   └── templates/          # Jinja2 templates
-├── tests/                  # Pytest test suites
-├── .github/workflows/      # CI/CD pipelines
-├── docs/                   # Documentation
-└── docker-compose.yml      # Container orchestration
+│   └── templates/               # Jinja2 templates
+├── tests/                       # Pytest test suites
+├── .github/
+│   ├── workflows/pipeline.yml   # CI/CD (11 stages)
+│   └── dependabot.yml           # Dependency updates
+├── .coderabbit.yaml             # AI code review config
+└── docker-compose.yml           # Container orchestration
 ```
 
 ---

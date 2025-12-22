@@ -86,3 +86,7 @@ service-account*.json
 generate_*.py
 consent.json
 query.json
+
+# Demo/test data (local only)
+demo_data/
+test-results/
