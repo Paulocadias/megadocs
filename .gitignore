@@ -90,3 +90,6 @@ query.json
 # Demo/test data (local only)
 demo_data/
 test-results/
+
+# Tests (run locally, not in repo)
+tests/

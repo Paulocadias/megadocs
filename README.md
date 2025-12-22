@@ -183,7 +183,6 @@ megadocs/
 │   │   └── crash_prevention.py  # Circuit breaker + memory guard
 │   ├── openrouter_gateway.py    # Multi-model AI gateway
 │   └── templates/               # Jinja2 templates
-├── tests/                       # Pytest test suites
 ├── .github/
 │   ├── workflows/pipeline.yml   # CI/CD (11 stages)
 │   └── dependabot.yml           # Dependency updates
