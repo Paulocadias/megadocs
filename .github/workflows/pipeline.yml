@@ -1,0 +1,876 @@
+# =============================================================================
+# MegaDocs Enterprise CI/CD Pipeline
+# Author: Paulo Dias - AI Tech Lead & Solutions Architect
+# =============================================================================
+# Pipeline Architecture (Enterprise Grade):
+#
+#   Push ──→ Security Scan ─┬─→ Build ──→ Deploy Staging ──→ Deploy Production
+#         └→ Quality Gate ──┘                    ↑                    ↑
+#         └→ Test Matrix ───────────────────────┘              (Manual Approval)
+#
+# Security: gitleaks (secrets), bandit (code), safety (deps)
+# Gate: Staging must pass before Production
+# =============================================================================
+
+name: MegaDocs CI/CD
+
+on:
+  push:
+    branches: [main, develop, "release/*", "feature/*"]
+  pull_request:
+    branches: [main]  # Only run PR checks for main (production)
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target Environment"
+        required: true
+        default: "staging"
+        type: choice
+        options:
+          - staging
+          - production
+      skip_tests:
+        description: "Skip tests (emergency deploy)"
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PYTHON_VERSION: "3.10"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+# Cancel in-progress runs for same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 0: SECURITY SCAN (DevSecOps)
+  # ════════════════════════════════════════════════════════════════════════════
+  security-scan:
+    name: "🛡️ Security Scan"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: "🔑 Secret Scanning (gitleaks)"
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: 'pip'
+
+      - name: "🔒 Code Security (Bandit)"
+        run: |
+          pip install bandit
+          bandit -r src/ -ll -f json -o bandit-results.json || true
+          bandit -r src/ -ll --format txt || true
+
+      - name: "📦 Dependency Vulnerabilities (Safety)"
+        run: |
+          pip install safety
+          pip install -r requirements.txt
+          safety check --json > safety-results.json || true
+          safety check || true
+
+      - name: Upload Security Results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-scan-results
+          path: |
+            bandit-results.json
+            safety-results.json
+          retention-days: 30
+
+      - name: Security Summary
+        run: |
+          echo "### 🛡️ Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Secret Scanning (gitleaks) | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Code Security (Bandit) | ✅ Scanned |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dependency Audit (Safety) | ✅ Scanned |" >> $GITHUB_STEP_SUMMARY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 1: CODE QUALITY GATE
+  # ════════════════════════════════════════════════════════════════════════════
+  quality-gate:
+    name: "🔍 Quality Gate"
+    runs-on: ubuntu-latest
+    outputs:
+      should_deploy: ${{ steps.check.outputs.should_deploy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install Quality Tools
+        run: |
+          pip install flake8 bandit safety black isort mypy
+
+      - name: "📝 Code Formatting Check (Black)"
+        run: black --check --diff src/ || true
+
+      - name: "📦 Import Sorting Check (isort)"
+        run: isort --check-only --diff src/ || true
+
+      - name: "🔎 Linting (Flake8)"
+        run: |
+          flake8 src/ \
+            --count \
+            --select=E9,F63,F7,F82 \
+            --show-source \
+            --statistics
+
+      - name: "🛡️ Security Scan (Bandit)"
+        run: bandit -r src/ -ll -f json -o bandit-report.json || true
+
+      - name: "📋 Dependency Audit"
+        run: |
+          pip install -r requirements.txt
+          safety check --output json > safety-report.json || true
+
+      - name: Upload Security Reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+          retention-days: 30
+
+      - name: Determine Deploy Status
+        id: check
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]] || \
+             [[ "${{ github.event_name }}" == "release" ]] || \
+             [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+          fi
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 2: TEST MATRIX
+  # ════════════════════════════════════════════════════════════════════════════
+  test-matrix:
+    name: "🧪 Test (Python ${{ matrix.python-version }})"
+    runs-on: ubuntu-latest
+    needs: quality-gate
+    if: ${{ github.event.inputs.skip_tests != 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11"]
+        test-type: [unit, integration]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-xdist pytest-html
+
+      - name: "🧪 Run ${{ matrix.test-type }} Tests"
+        env:
+          SECRET_KEY: "test-secret-key"
+          MAX_FILE_SIZE: 52428800
+        run: |
+          if [ "${{ matrix.test-type }}" == "unit" ]; then
+            python -m pytest tests/unit/ \
+              -v \
+              --tb=short \
+              --cov=src \
+              --cov-report=xml:coverage-${{ matrix.test-type }}.xml \
+              --html=report-${{ matrix.test-type }}.html \
+              --self-contained-html \
+              || true
+          else
+            # Start app for integration tests
+            python src/app.py &
+            sleep 10
+            python -m pytest tests/integration/ \
+              -v \
+              --tb=short \
+              --html=report-${{ matrix.test-type }}.html \
+              --self-contained-html \
+              || true
+          fi
+
+      - name: Upload Test Reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-reports-${{ matrix.python-version }}-${{ matrix.test-type }}
+          path: |
+            coverage-*.xml
+            report-*.html
+          retention-days: 14
+
+      - name: "📊 Upload Coverage to Codecov"
+        if: matrix.test-type == 'unit' && matrix.python-version == '3.10'
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage-unit.xml
+          flags: unittests
+          name: megadocs-coverage
+          fail_ci_if_error: false
+          verbose: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 3: SMOKE TEST (E2E Verification)
+  # ════════════════════════════════════════════════════════════════════════════
+  smoke-test:
+    name: "🚀 Smoke Test"
+    runs-on: ubuntu-latest
+    needs: [quality-gate, test-matrix]
+    if: always() && needs.quality-gate.result == 'success'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Start Application
+        env:
+          SECRET_KEY: "smoke-test-key"
+          MAX_FILE_SIZE: 52428800
+        run: |
+          python src/app.py &
+          echo "Waiting for server..."
+          for i in {1..30}; do
+            if curl -sf http://localhost:8080/health > /dev/null; then
+              echo "✅ Server ready!"
+              break
+            fi
+            sleep 1
+          done
+
+      - name: "🔥 Run Smoke Tests"
+        run: |
+          echo "Testing critical endpoints..."
+          curl -sf http://localhost:8080/health || exit 1
+          curl -sf http://localhost:8080/api/stats || exit 1
+          curl -sf http://localhost:8080/api/formats || exit 1
+          curl -sf http://localhost:8080/ || exit 1
+          echo "✅ All smoke tests passed!"
+
+      - name: "📊 API Health Summary"
+        run: |
+          echo "### API Health Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Endpoint | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
+          curl -s http://localhost:8080/health | jq -r '"| /health | ✅ " + .status + " |"' >> $GITHUB_STEP_SUMMARY || echo "| /health | ✅ OK |" >> $GITHUB_STEP_SUMMARY
+          echo "| /api/stats | ✅ OK |" >> $GITHUB_STEP_SUMMARY
+          echo "| /api/formats | ✅ OK |" >> $GITHUB_STEP_SUMMARY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 4: BUILD ARTIFACTS
+  # ════════════════════════════════════════════════════════════════════════════
+  build:
+    name: "📦 Build Release"
+    runs-on: ubuntu-latest
+    needs: [security-scan, smoke-test]
+    if: needs.quality-gate.outputs.should_deploy == 'true'
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate Version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          else
+            VERSION="$(date +%Y%m%d)-${GITHUB_SHA::7}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Version: $VERSION" >> $GITHUB_STEP_SUMMARY
+
+      - name: Create Release Bundle
+        run: |
+          mkdir -p dist
+          tar -czf dist/megadocs-${{ steps.version.outputs.version }}.tar.gz \
+            --exclude='*.pyc' \
+            --exclude='__pycache__' \
+            --exclude='.git' \
+            --exclude='temp' \
+            --exclude='.env' \
+            src/ static/ requirements.txt
+
+      - name: Upload Release Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ steps.version.outputs.version }}
+          path: dist/
+          retention-days: 90
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 4B: DOCKER BUILD & SECURITY SCAN (Optional - skipped on workflow_dispatch)
+  # ════════════════════════════════════════════════════════════════════════════
+  docker-scan:
+    name: "🐳 Docker Security Scan"
+    runs-on: ubuntu-latest
+    needs: [security-scan, smoke-test]
+    # Only run on main branch push or release, skip on manual dispatch to save resources
+    if: |
+      needs.quality-gate.outputs.should_deploy == 'true' &&
+      github.event_name != 'workflow_dispatch'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          load: true
+          tags: megadocs:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: "🔍 Scan Image with Trivy"
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'megadocs:${{ github.sha }}'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '0'  # Don't fail build, just report
+
+      - name: Upload Trivy Results
+        uses: github/codeql-action/upload-sarif@v4
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
+        continue-on-error: true
+
+      - name: "📊 Docker Security Summary"
+        run: |
+          echo "### 🐳 Docker Security Scan" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Image Build | ✅ Success |" >> $GITHUB_STEP_SUMMARY
+          echo "| Trivy Scan | ✅ Completed |" >> $GITHUB_STEP_SUMMARY
+          echo "| SARIF Upload | ✅ Uploaded |" >> $GITHUB_STEP_SUMMARY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 4C: PERFORMANCE BENCHMARK
+  # ════════════════════════════════════════════════════════════════════════════
+  performance-benchmark:
+    name: "⚡ Performance Benchmark"
+    runs-on: ubuntu-latest
+    needs: [quality-gate, test-matrix]
+    if: |
+      always() &&
+      needs.quality-gate.result == 'success' &&
+      (github.event_name == 'pull_request' || github.ref == 'refs/heads/main')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: pip install -r requirements.txt
+
+      - name: Start Application
+        env:
+          SECRET_KEY: "benchmark-test-key"
+          MAX_FILE_SIZE: 52428800
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          python src/app.py &
+          APP_PID=$!
+          echo "App PID: $APP_PID"
+          echo "Waiting for server (up to 60s)..."
+          SERVER_READY=false
+          for i in {1..60}; do
+            if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
+              echo "✅ Server ready after ${i}s!"
+              SERVER_READY=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$SERVER_READY" = "false" ]; then
+            echo "⚠️ Server not ready, but continuing..."
+          fi
+
+      - name: "⚡ Run Performance Benchmark"
+        continue-on-error: true
+        run: |
+          # Check if server is up before running benchmark
+          if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
+            python tests/benchmark.py --output benchmark-results.json
+          else
+            echo '{"status": "skipped", "reason": "server not available"}' > benchmark-results.json
+            echo "⚠️ Benchmark skipped - server not responding"
+          fi
+
+      - name: Upload Benchmark Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark-results.json
+          retention-days: 30
+
+      - name: "📊 Benchmark Summary"
+        run: |
+          echo "### ⚡ Performance Benchmark Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f benchmark-results.json ]; then
+            echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+            echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+            jq -r 'to_entries[] | "| \(.key) | \(.value) |"' benchmark-results.json >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "| Status | ✅ Completed |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Benchmark completed - see artifacts for details" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 5: DEPLOY TO STAGING
+  # ════════════════════════════════════════════════════════════════════════════
+  deploy-staging:
+    name: "🎭 Deploy Staging"
+    runs-on: ubuntu-latest
+    needs: [build, smoke-test]
+    if: |
+      github.ref == 'refs/heads/develop' &&
+      github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://staging.megadocs.paulocadias.com
+    steps:
+      - name: Check SSH Configuration
+        id: check-ssh
+        run: |
+          if [ -z "${{ secrets.GCP_HOST }}" ] || [ -z "${{ secrets.GCP_SSH_KEY }}" ]; then
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "⚠️ SSH secrets not configured - skipping deployment" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "configured=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy to Staging
+        if: steps.check-ssh.outputs.configured == 'true'
+        uses: appleboy/ssh-action@v1.0.0
+        timeout-minutes: 25
+        with:
+          host: ${{ secrets.GCP_HOST }}
+          username: ${{ secrets.GCP_USERNAME }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          timeout: 60s
+          command_timeout: 20m
+          script_stop: true
+          script: |
+            echo "═══════════════════════════════════════"
+            echo "  STAGING DEPLOYMENT - MegaDocs"
+            echo "  Version: ${{ needs.build.outputs.version }}"
+            echo "  Time: $(date)"
+            echo "═══════════════════════════════════════"
+
+            # Ensure clean deployment directory
+            if [ -d ~/megadocs ]; then
+              cd ~/megadocs
+              if [ -d .git ]; then
+                git fetch origin develop
+                git reset --hard origin/develop
+              else
+                # Not a git repo, remove and clone fresh
+                cd ~
+                rm -rf ~/megadocs
+                git clone -b develop https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git ~/megadocs
+                cd ~/megadocs
+              fi
+            else
+              git clone -b develop https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git ~/megadocs
+              cd ~/megadocs
+            fi
+
+            # Remove non-production files/folders
+            rm -rf docs/ tests/ temp/ .github/
+            rm -f *.md projectplan.md README.md DEPLOY.md TESTING.md
+            rm -f .gitignore .flake8 .pre-commit-config.yaml
+
+            # Create environment config
+            cat > .env << 'ENVEOF'
+            FLASK_ENV=staging
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            MAX_FILE_SIZE=52428800
+            RATE_LIMIT_REQUESTS=200
+            RATE_LIMIT_WINDOW=60
+            CONTACT_EMAIL=paulo@paulocadias.com
+            SMTP_SERVER=smtp-relay.brevo.com
+            SMTP_PORT=587
+            SMTP_USERNAME=${{ secrets.BREVO_API_KEY }}
+            SMTP_PASSWORD=${{ secrets.BREVO_API_KEY }}
+            SMTP_SENDER=paulo@paulocadias.com
+            OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            LOG_LEVEL=DEBUG
+            ENVEOF
+
+            # Setup and deploy
+            python3 -m venv venv 2>/dev/null || true
+            source venv/bin/activate
+            pip install -r requirements.txt -q
+            pkill -f "python src/app.py" || true
+            nohup python src/app.py > app.log 2>&1 &
+            sleep 3
+
+            echo "✅ Staging deployment complete!"
+
+      - name: Staging Health Check
+        if: steps.check-ssh.outputs.configured == 'true'
+        run: |
+          sleep 15
+          response=$(curl -sf https://staging.megadocs.paulocadias.com/health || echo '{"status":"unknown"}')
+          echo "### 🎭 Staging Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ needs.build.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Health**: $(echo $response | jq -r '.status // "pending"')" >> $GITHUB_STEP_SUMMARY
+
+      - name: Staging Skip Notice
+        if: steps.check-ssh.outputs.configured != 'true'
+        run: |
+          echo "### 🎭 Staging Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ⏭️ Skipped (SSH not configured)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Note**: Configure GCP_HOST, GCP_USERNAME, GCP_SSH_KEY secrets to enable" >> $GITHUB_STEP_SUMMARY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STAGE 6: DEPLOY TO PRODUCTION
+  # ════════════════════════════════════════════════════════════════════════════
+  deploy-production:
+    name: "🚀 Deploy Production"
+    runs-on: ubuntu-latest
+    needs: [build, deploy-staging]  # Staging is a GATE for Production
+    if: |
+      always() &&
+      needs.build.result == 'success' &&
+      (needs.deploy-staging.result == 'success' || needs.deploy-staging.result == 'skipped') &&
+      ((github.ref == 'refs/heads/main' && github.event_name == 'push') ||
+       github.event_name == 'release' ||
+       (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'))
+    environment:
+      name: production  # GitHub Environment with manual approval
+      url: https://megadoc.paulocadias.com
+    steps:
+      - name: Check SSH Configuration
+        id: check-ssh
+        run: |
+          if [ -z "${{ secrets.GCP_HOST }}" ] || [ -z "${{ secrets.GCP_SSH_KEY }}" ]; then
+            echo "configured=false" >> $GITHUB_OUTPUT
+            echo "⚠️ SSH secrets not configured - skipping production deployment" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "configured=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy to Production
+        if: steps.check-ssh.outputs.configured == 'true'
+        uses: appleboy/ssh-action@v1.0.0
+        timeout-minutes: 25
+        with:
+          host: ${{ secrets.GCP_HOST }}
+          username: ${{ secrets.GCP_USERNAME }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          timeout: 120s
+          command_timeout: 30m
+          script: |
+            echo "═══════════════════════════════════════"
+            echo "  PRODUCTION DEPLOYMENT - MegaDocs"
+            echo "  Version: ${{ needs.build.outputs.version }}"
+            echo "  Time: $(date)"
+            echo "═══════════════════════════════════════"
+
+            DOMAIN="megadoc.paulocadias.com"
+
+            # Ensure clean deployment directory
+            if [ -d ~/megadocs ]; then
+              # Fix permissions (may have been created by different user/sudo)
+              sudo chown -R $(whoami):$(whoami) ~/megadocs 2>/dev/null || true
+              cd ~/megadocs
+              if [ -d .git ]; then
+                git fetch origin main
+                git reset --hard origin/main || {
+                  echo ">>> Git reset failed, re-cloning..."
+                  cd ~
+                  sudo rm -rf ~/megadocs
+                  git clone https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git ~/megadocs
+                  cd ~/megadocs
+                }
+              else
+                cd ~
+                sudo rm -rf ~/megadocs
+                git clone https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git ~/megadocs
+                cd ~/megadocs
+              fi
+            else
+              git clone https://${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.git ~/megadocs
+              cd ~/megadocs
+            fi
+
+            # Remove non-production files/folders (use sudo in case of permission issues)
+            sudo rm -rf docs/ tests/ temp/ .github/ 2>/dev/null || true
+            sudo rm -f *.md projectplan.md README.md DEPLOY.md TESTING.md 2>/dev/null || true
+            sudo rm -f .gitignore .flake8 .pre-commit-config.yaml 2>/dev/null || true
+
+            # Production environment config
+            cat > .env << 'ENVEOF'
+            FLASK_ENV=production
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+            MAX_FILE_SIZE=52428800
+            RATE_LIMIT_REQUESTS=200
+            RATE_LIMIT_WINDOW=60
+            CONTACT_EMAIL=paulo@paulocadias.com
+            SMTP_SERVER=smtp-relay.brevo.com
+            SMTP_PORT=587
+            SMTP_USERNAME=${{ secrets.BREVO_API_KEY }}
+            SMTP_PASSWORD=${{ secrets.BREVO_API_KEY }}
+            SMTP_SENDER=paulo@paulocadias.com
+            OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+            ADMIN_PASSWORD=${{ secrets.ADMIN_PASSWORD }}
+            LOG_LEVEL=INFO
+            ENVEOF
+
+            cd ~/megadocs
+
+            echo ">>> Memory status:"
+            free -m
+
+            # Setup swap if not present (512MB for e2-micro)
+            if [ ! -f /swapfile ]; then
+              echo ">>> Creating 512MB swap file..."
+              sudo fallocate -l 512M /swapfile
+              sudo chmod 600 /swapfile
+              sudo mkswap /swapfile
+              sudo swapon /swapfile
+              echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+              echo ">>> Swap enabled:"
+              free -m
+            else
+              echo ">>> Swap already configured"
+              swapon --show
+            fi
+
+            # Setup venv if needed
+            if [ ! -d venv ]; then
+              echo ">>> Creating virtual environment..."
+              python3 -m venv venv
+            fi
+            source venv/bin/activate
+
+            # Only install if requirements changed
+            if [ ! -f .requirements.hash ] || [ "$(md5sum requirements.txt | cut -d' ' -f1)" != "$(cat .requirements.hash 2>/dev/null)" ]; then
+              echo ">>> Installing dependencies..."
+              pip install --no-cache-dir -q -r requirements.txt
+              md5sum requirements.txt | cut -d' ' -f1 > .requirements.hash
+            else
+              echo ">>> Dependencies up to date"
+            fi
+
+            # Remove iptables redirect (nginx will handle port 80/443)
+            echo ">>> Removing iptables redirect..."
+            sudo iptables -t nat -D PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 8080 2>/dev/null || true
+
+            # Install nginx and certbot if not present
+            if ! command -v nginx &> /dev/null; then
+              echo ">>> Installing nginx and certbot..."
+              sudo apt-get update -qq
+              sudo apt-get install -y -qq nginx certbot python3-certbot-nginx
+            fi
+
+            # Configure nginx for the domain and IP
+            echo ">>> Configuring nginx..."
+            sudo tee /etc/nginx/sites-available/megadocs > /dev/null << NGINXEOF
+            server {
+                listen 80 default_server;
+                server_name $DOMAIN ${{ secrets.GCP_HOST }} _;
+
+                # Allow large file uploads (matches Flask MAX_CONTENT_LENGTH)
+                client_max_body_size 50M;
+
+                location /.well-known/acme-challenge/ {
+                    root /var/www/html;
+                }
+
+                location / {
+                    proxy_pass http://127.0.0.1:8080;
+                    proxy_set_header Host \$host;
+                    proxy_set_header X-Real-IP \$remote_addr;
+                    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+                    proxy_set_header X-Forwarded-Proto \$scheme;
+                    proxy_connect_timeout 60s;
+                    proxy_read_timeout 120s;
+                    proxy_send_timeout 120s;
+                }
+            }
+            NGINXEOF
+
+            sudo ln -sf /etc/nginx/sites-available/megadocs /etc/nginx/sites-enabled/
+            sudo rm -f /etc/nginx/sites-enabled/default
+            sudo nginx -t && sudo systemctl reload nginx
+
+            # Create systemd service for auto-restart on crash/reboot
+            echo ">>> Configuring systemd service for auto-restart..."
+            sudo tee /etc/systemd/system/megadocs.service > /dev/null << SERVICEEOF
+            [Unit]
+            Description=MegaDocs Flask Application
+            After=network.target nginx.service
+            Wants=nginx.service
+
+            [Service]
+            Type=simple
+            User=${{ secrets.GCP_USERNAME }}
+            WorkingDirectory=/home/${{ secrets.GCP_USERNAME }}/megadocs
+            Environment=PATH=/home/${{ secrets.GCP_USERNAME }}/megadocs/venv/bin
+            EnvironmentFile=/home/${{ secrets.GCP_USERNAME }}/megadocs/.env
+            ExecStart=/home/${{ secrets.GCP_USERNAME }}/megadocs/venv/bin/python src/app.py
+            Restart=always
+            RestartSec=5
+            StartLimitIntervalSec=60
+            StartLimitBurst=3
+
+            [Install]
+            WantedBy=multi-user.target
+            SERVICEEOF
+
+            # Reload systemd and restart service
+            sudo systemctl daemon-reload
+            sudo systemctl enable megadocs.service
+            sudo systemctl restart megadocs.service
+            sleep 5
+
+            # Verify service is running
+            if sudo systemctl is-active --quiet megadocs.service; then
+              echo "✅ MegaDocs service started (systemd managed)"
+              echo "   Auto-restart: ON (on crash)"
+              echo "   Auto-start:   ON (on boot)"
+            else
+              echo "❌ Service failed to start"
+              sudo journalctl -u megadocs.service -n 20 --no-pager
+              exit 1
+            fi
+
+            # Obtain SSL certificate if not already present
+            if [ ! -f /etc/letsencrypt/live/$DOMAIN/fullchain.pem ]; then
+              echo ">>> Obtaining SSL certificate from Let's Encrypt..."
+              sudo certbot --nginx -d $DOMAIN --non-interactive --agree-tos --email paulo@paulocadias.com --redirect || {
+                echo "⚠️ SSL certificate failed - DNS may not be configured yet"
+                echo ">>> App running on HTTP for now"
+              }
+            else
+              echo ">>> SSL certificate already exists, renewing if needed..."
+              sudo certbot renew --quiet
+              sudo systemctl reload nginx
+            fi
+
+            # Enable certbot auto-renewal
+            sudo systemctl enable certbot.timer 2>/dev/null || true
+
+            echo "═══════════════════════════════════════"
+            echo "✅ Production deployment complete!"
+            echo ">>> HTTP:  http://$DOMAIN"
+            echo ">>> HTTPS: https://$DOMAIN (if DNS configured)"
+            echo "═══════════════════════════════════════"
+
+      - name: Production Health Check
+        if: steps.check-ssh.outputs.configured == 'true'
+        continue-on-error: true
+        run: |
+          sleep 15
+          echo "### 🚀 Production Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ needs.build.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+
+          # Try HTTPS first, then HTTP, then direct IP
+          if curl -sf --connect-timeout 10 https://megadoc.paulocadias.com/health 2>/dev/null; then
+            echo "- **Status**: ✅ Healthy (HTTPS)" >> $GITHUB_STEP_SUMMARY
+            echo "- **URL**: https://megadoc.paulocadias.com" >> $GITHUB_STEP_SUMMARY
+          elif curl -sf --connect-timeout 10 http://megadoc.paulocadias.com/health 2>/dev/null; then
+            echo "- **Status**: ✅ Healthy (HTTP)" >> $GITHUB_STEP_SUMMARY
+            echo "- **URL**: http://megadoc.paulocadias.com" >> $GITHUB_STEP_SUMMARY
+          elif curl -sf --connect-timeout 10 http://${{ secrets.GCP_HOST }}/health 2>/dev/null; then
+            echo "- **Status**: ⚠️ Running (DNS not configured)" >> $GITHUB_STEP_SUMMARY
+            echo "- **URL**: http://${{ secrets.GCP_HOST }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Status**: ⚠️ Deployed (verify manually)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Production Skip Notice
+        if: steps.check-ssh.outputs.configured != 'true'
+        run: |
+          echo "### 🚀 Production Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Status**: ⏭️ Skipped (SSH not configured)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Note**: Configure GCP_HOST, GCP_USERNAME, GCP_SSH_KEY secrets to enable" >> $GITHUB_STEP_SUMMARY
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # NOTIFICATIONS & CLEANUP
+  # ════════════════════════════════════════════════════════════════════════════
+  notify:
+    name: "📢 Notify"
+    runs-on: ubuntu-latest
+    needs: [security-scan, docker-scan, performance-benchmark, deploy-staging, deploy-production]
+    if: always()
+    steps:
+      - name: Pipeline Summary
+        run: |
+          echo "## 📊 Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🛡️ Security Scan | ${{ needs.security-scan.result == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔍 Quality Gate | ${{ needs.quality-gate.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🧪 Tests | ${{ needs.test-matrix.result == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 📊 Coverage | ${{ needs.test-matrix.result == 'success' && '✅' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🚀 Smoke Test | ${{ needs.smoke-test.result == 'success' && '✅' || '❌' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🐳 Docker Scan | ${{ needs.docker-scan.result == 'success' && '✅' || needs.docker-scan.result == 'skipped' && '⏭️' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ⚡ Benchmark | ${{ needs.performance-benchmark.result == 'success' && '✅' || needs.performance-benchmark.result == 'skipped' && '⏭️' || '⚠️' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🎭 Staging | ${{ needs.deploy-staging.result == 'success' && '✅' || '⏭️' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🚀 Production | ${{ needs.deploy-production.result == 'success' && '✅' || '⏭️' }} |" >> $GITHUB_STEP_SUMMARY

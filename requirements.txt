@@ -1,0 +1,39 @@
+flask>=3.0.0
+markitdown[all]>=0.1.0
+python-dotenv>=1.0.0
+werkzeug>=3.0.0
+requests>=2.31.0
+mcp>=1.0.0
+
+# Pin numpy to avoid scipy compatibility issues
+numpy<2.0
+
+# Document analysis features
+scikit-learn>=1.3.0
+textstat>=0.7.3
+langdetect>=1.0.9
+tiktoken>=0.5.0
+
+# Resilience patterns
+pybreaker>=1.0.0
+
+# System monitoring
+psutil>=5.9.0
+prometheus-client>=0.19.0
+python-json-logger>=2.0.7
+apispec[yaml]>=6.3.0
+apispec-webframeworks>=0.5.2
+flask-swagger-ui>=4.11.1
+
+# Vector Databases (Optional exports)
+chromadb>=0.4.15
+lancedb>=0.3.3
+
+# SQL Sandbox (BYOD feature)
+pandas>=2.0.0
+openpyxl>=3.1.0
+sqlglot>=25.0.0
+
+# Agentic Workflows (Investigator Agent)
+langgraph>=0.2.0
+langchain-core>=0.3.0

@@ -1,0 +1,523 @@
+{% extends "base.html" %}
+
+{% block title %}Visual Defect Intelligence - Industrial AI | MegaDoc{% endblock %}
+{% block description %}Real-time image analysis for shop floor defects using AI vision. Detect rust, cracks, leaks, and safety hazards.{% endblock %}
+
+{% block extra_head %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<style>
+    /* Mobile-first Field Technician View */
+    .vision-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+
+    .vision-hero {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .vision-badge {
+        display: inline-block;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        color: #92400e;
+        padding: 0.4rem 1rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        margin-bottom: 1rem;
+    }
+
+    .vision-hero h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+        color: var(--text);
+    }
+
+    .vision-hero p {
+        font-size: 0.95rem;
+        color: var(--text-light);
+    }
+
+    /* Context Selector */
+    .context-selector {
+        margin-bottom: 1.5rem;
+    }
+
+    .context-selector label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 0.5rem;
+    }
+
+    .context-selector select {
+        width: 100%;
+        padding: 0.75rem;
+        border: 2px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.95rem;
+        background: white;
+        color: var(--text);
+    }
+
+    /* Scan Button */
+    .scan-button-container {
+        margin-bottom: 1.5rem;
+    }
+
+    .scan-button {
+        width: 100%;
+        padding: 1.25rem;
+        background: linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        transition: all 0.3s;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+
+    .scan-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+    }
+
+    .scan-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .scan-button.analyzing {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    }
+
+    /* Image Preview */
+    .image-preview-container {
+        margin-bottom: 1.5rem;
+        display: none;
+    }
+
+    .image-preview-container.active {
+        display: block;
+    }
+
+    .image-preview {
+        width: 100%;
+        border-radius: 12px;
+        border: 2px solid var(--border);
+        max-height: 400px;
+        object-fit: contain;
+        background: var(--bg);
+    }
+
+    /* Result Card - Digital Tag Style */
+    .result-card {
+        background: white;
+        border-radius: 12px;
+        border: 2px solid var(--border);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .result-card.active {
+        display: block;
+    }
+
+    .result-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .result-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .severity-badge {
+        padding: 0.4rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .severity-badge.low {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .severity-badge.med {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .severity-badge.high {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .result-field {
+        margin-bottom: 1rem;
+    }
+
+    .result-field-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-light);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+    }
+
+    .result-field-value {
+        font-size: 0.95rem;
+        color: var(--text);
+        line-height: 1.5;
+    }
+
+    .safety-risk-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+
+    .safety-risk-indicator.true {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .safety-risk-indicator.false {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    /* Action Button */
+    .action-button {
+        width: 100%;
+        padding: 1rem;
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        margin-top: 1rem;
+    }
+
+    .action-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    /* Toast Notification */
+    .toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #1f2937;
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        display: none;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    .toast.show {
+        display: block;
+    }
+
+    .toast.warning {
+        background: #f59e0b;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    /* Hidden file input */
+    #imageInput {
+        display: none;
+    }
+
+    /* Loading state */
+    .loading-spinner {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="vision-container">
+    <!-- Hero Section -->
+    <section class="vision-hero">
+        <span class="vision-badge">SHOP FLOOR AI ASSISTANT</span>
+        <h1>Visual Defect Intelligence</h1>
+        <p>Scan equipment images for defects, safety hazards, and maintenance needs</p>
+    </section>
+
+    <!-- Context Selector -->
+    <div class="context-selector">
+        <label for="equipmentContext">Equipment Context:</label>
+        <select id="equipmentContext">
+            <option value="">Select Equipment...</option>
+            <option value="Packaging Line A">Packaging Line A</option>
+            <option value="Assembly Bot">Assembly Bot</option>
+            <option value="Hydraulic Press">Hydraulic Press</option>
+            <option value="Conveyor Belt System">Conveyor Belt System</option>
+            <option value="Cooling Tower">Cooling Tower</option>
+        </select>
+    </div>
+
+    <!-- Scan Button -->
+    <div class="scan-button-container">
+        <button class="scan-button" id="scanButton">
+            <span style="font-size: 1.5rem;">📸</span>
+            <span>Scan Equipment</span>
+        </button>
+        <input type="file" id="imageInput" accept="image/*" capture="environment">
+    </div>
+
+    <!-- Image Preview -->
+    <div class="image-preview-container" id="imagePreview">
+        <img id="previewImage" class="image-preview" alt="Equipment preview">
+    </div>
+
+    <!-- Result Card -->
+    <div class="result-card" id="resultCard">
+        <div class="result-header">
+            <div class="result-title">Defect Analysis</div>
+            <div class="severity-badge" id="severityBadge">Med</div>
+        </div>
+
+        <div class="result-field">
+            <div class="result-field-label">Defect Type</div>
+            <div class="result-field-value" id="defectType">-</div>
+        </div>
+
+        <div class="result-field">
+            <div class="result-field-label">Severity</div>
+            <div class="result-field-value" id="severity">-</div>
+        </div>
+
+        <div class="result-field">
+            <div class="result-field-label">Recommended Action</div>
+            <div class="result-field-value" id="recommendedAction">-</div>
+        </div>
+
+        <div class="result-field">
+            <div class="result-field-label">Safety Risk</div>
+            <div class="result-field-value">
+                <span class="safety-risk-indicator" id="safetyRisk">
+                    <span id="safetyIcon">⚠️</span>
+                    <span id="safetyText">Unknown</span>
+                </span>
+            </div>
+        </div>
+
+        <div class="result-field">
+            <div class="result-field-label">Urgency</div>
+            <div class="result-field-value" id="urgency">-</div>
+        </div>
+
+        <div class="result-field" id="downtimeField" style="display: none;">
+            <div class="result-field-label">Estimated Downtime</div>
+            <div class="result-field-value" id="estimatedDowntime">-</div>
+        </div>
+
+        <button class="action-button" id="createWorkOrder">
+            📋 Create Work Order
+        </button>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast"></div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const scanButton = document.getElementById('scanButton');
+    const imageInput = document.getElementById('imageInput');
+    const imagePreview = document.getElementById('imagePreview');
+    const previewImage = document.getElementById('previewImage');
+    const resultCard = document.getElementById('resultCard');
+    const equipmentContext = document.getElementById('equipmentContext');
+    const toast = document.getElementById('toast');
+    const createWorkOrderBtn = document.getElementById('createWorkOrder');
+
+    let currentImageData = null;
+
+    // Scan button click
+    scanButton.addEventListener('click', () => {
+        imageInput.click();
+    });
+
+    // File input change
+    imageInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                currentImageData = event.target.result;
+                previewImage.src = currentImageData;
+                imagePreview.classList.add('active');
+                resultCard.classList.remove('active');
+                analyzeImage();
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // Analyze image
+    async function analyzeImage() {
+        if (!currentImageData) return;
+
+        scanButton.disabled = true;
+        scanButton.classList.add('analyzing');
+        scanButton.innerHTML = '<span class="loading-spinner"></span> Analyzing...';
+
+        try {
+            const response = await fetch('/api/analyze-image', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    image: currentImageData,
+                    context: equipmentContext.value
+                })
+            });
+
+            if (response.status === 429) {
+                const data = await response.json();
+                showToast(`System Busy - Retrying in ${data.retry_after || 3}s...`, 'warning');
+                // Retry after delay
+                setTimeout(() => analyzeImage(), (data.retry_after || 3) * 1000);
+                return;
+            }
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Analysis failed');
+            }
+
+            const data = await response.json();
+            displayResults(data.analysis);
+
+        } catch (error) {
+            console.error('Analysis error:', error);
+            showToast(`Error: ${error.message}. Please try again.`, 'error');
+        } finally {
+            scanButton.disabled = false;
+            scanButton.classList.remove('analyzing');
+            scanButton.innerHTML = '<span style="font-size: 1.5rem;">📸</span><span>Scan Equipment</span>';
+        }
+    }
+
+    // Display results
+    function displayResults(analysis) {
+        // Defect type
+        document.getElementById('defectType').textContent = analysis.defect_type || 'Unknown';
+
+        // Severity
+        const severity = (analysis.severity || 'Med').toLowerCase();
+        document.getElementById('severity').textContent = analysis.severity || 'Med';
+        const severityBadge = document.getElementById('severityBadge');
+        severityBadge.textContent = analysis.severity || 'Med';
+        severityBadge.className = `severity-badge ${severity}`;
+
+        // Recommended action
+        document.getElementById('recommendedAction').textContent = analysis.recommended_action || 'Manual inspection required';
+
+        // Safety risk
+        const safetyRisk = analysis.safety_risk === true || analysis.safety_risk === 'true';
+        const safetyIndicator = document.getElementById('safetyRisk');
+        const safetyIcon = document.getElementById('safetyIcon');
+        const safetyText = document.getElementById('safetyText');
+        
+        if (safetyRisk) {
+            safetyIndicator.className = 'safety-risk-indicator true';
+            safetyIcon.textContent = '🚨';
+            safetyText.textContent = 'Safety Risk Detected';
+        } else {
+            safetyIndicator.className = 'safety-risk-indicator false';
+            safetyIcon.textContent = '✅';
+            safetyText.textContent = 'No Immediate Safety Risk';
+        }
+
+        // Urgency
+        document.getElementById('urgency').textContent = analysis.urgency || 'Medium';
+
+        // Downtime
+        if (analysis.estimated_downtime_hours) {
+            document.getElementById('downtimeField').style.display = 'block';
+            document.getElementById('estimatedDowntime').textContent = `${analysis.estimated_downtime_hours} hours`;
+        } else {
+            document.getElementById('downtimeField').style.display = 'none';
+        }
+
+        // Show result card
+        resultCard.classList.add('active');
+    }
+
+    // Create work order
+    createWorkOrderBtn.addEventListener('click', () => {
+        const ticketNumber = Math.floor(Math.random() * 900) + 100;
+        showToast(`Ticket #${ticketNumber} created in SAP`, 'success');
+    });
+
+    // Toast notification
+    function showToast(message, type = 'info') {
+        toast.textContent = message;
+        toast.className = `toast ${type} show`;
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+</script>
+{% endblock %}
+

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MegaDoc{% endblock %}</title>
+    <meta name="description"
+        content="{% block description %}Convert documents to Markdown for RAG pipelines and AI applications{% endblock %}">
+    {% include 'includes/head_common.html' %}
+    {% block extra_head %}{% endblock %}
+    {% block styles %}{% endblock %}
+</head>
+
+<body>
+    {% include 'includes/header.html' %}
+
+    <div class="app-container{% block container_class %}{% endblock %}">
+        {% block content %}{% endblock %}
+    </div>
+
+    {% include 'includes/footer.html' %}
+
+    {% block extra_scripts %}{% endblock %}
+
+    <!-- MegaDoc Assistant Chat Widget (hidden on pages with their own chat) -->
+    {% block chat_widget %}
+    {% include 'includes/chat_widget.html' %}
+    {% endblock %}
+</body>
+
+</html>

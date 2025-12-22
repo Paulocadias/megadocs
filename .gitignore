@@ -1,0 +1,98 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+
+# Environment variables (contains secrets!)
+.env
+.env.local
+.env.production
+*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Temp files
+temp/
+tmp/
+*.tmp
+nul
+
+# Test artifacts (curl outputs in root)
+cookies*.txt
+/contact*.html
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+
+# Data files (contain local stats, user data)
+data/*.db
+data/*.json
+*.db
+
+# Claude Code local settings
+.claude/
+
+# Development workflow artifacts
+projectplan.md
+task.md
+.agent/
+implementation_plan.md
+walkthrough.md
+docs/README-internal.md
+
+# Contact form submissions (contains user data)
+contact_submissions.json
+
+# Terraform state (contains infrastructure secrets)
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+
+# Secrets
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# Local utility scripts
+generate_*.py
+consent.json
+query.json
+
+# Demo/test data (local only)
+demo_data/
+test-results/
+
+# Tests (run locally, not in repo)
+tests/
+
+# Documentation (generated/local)
+docs/

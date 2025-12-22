@@ -1,0 +1,25 @@
+# MegaDoc - AI Architect Portfolio
+# https://megadoc.paulocadias.com
+
+User-agent: *
+Allow: /
+
+# Main pages
+Allow: /
+Allow: /about
+Allow: /architecture
+Allow: /methodology
+Allow: /use-cases
+Allow: /stats
+Allow: /contact
+
+# Demo apps (allow indexing for portfolio visibility)
+Allow: /convert
+Allow: /rag
+Allow: /sql-sandbox
+
+# API endpoints - disallow direct indexing
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://megadoc.paulocadias.com/sitemap.xml

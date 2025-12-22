@@ -1,0 +1,616 @@
+{% extends "base.html" %}
+
+{% block title %}Step 1: Ingest | MegaDoc{% endblock %}
+{% block description %}Upload one or more documents (PDF, Word, Excel) or images (JPG, PNG) for unified multi-modal
+processing. Upload multiple files to compare them. All sources are converted to searchable text for RAG.{% endblock %}
+
+{% block extra_head %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<style>
+    /* Compact page header */
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .page-header-left {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .page-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0;
+    }
+
+    .page-badge {
+        background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        color: var(--primary);
+        padding: 0.25rem 0.6rem;
+        border-radius: 9999px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+    }
+
+    .page-subtitle {
+        font-size: 0.85rem;
+        color: var(--text-light);
+        margin: 0;
+    }
+
+    /* Demo Banner */
+    .demo-banner {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        color: #92400e;
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        border: 1px solid #f59e0b;
+    }
+    .demo-icon {
+        font-size: 1.1rem;
+    }
+    @media (max-width: 600px) {
+        .demo-banner {
+            font-size: 0.75rem;
+            padding: 0.5rem 0.75rem;
+        }
+    }
+
+    /* Rate Limit Indicator */
+    .rate-limit-indicator {
+        display: none;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        border: 1px solid #f59e0b;
+        border-radius: 8px;
+        margin: 0.75rem 0;
+        font-size: 0.85rem;
+        color: #92400e;
+    }
+    .rate-limit-indicator.visible {
+        display: flex;
+    }
+    .semaphore {
+        display: flex;
+        gap: 4px;
+    }
+    .semaphore-light {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #d1d5db;
+        transition: all 0.3s;
+    }
+    .semaphore-light.red {
+        background: #ef4444;
+        box-shadow: 0 0 8px #ef4444;
+    }
+    .semaphore-light.yellow {
+        background: #f59e0b;
+        box-shadow: 0 0 8px #f59e0b;
+    }
+    .semaphore-light.green {
+        background: #10b981;
+        box-shadow: 0 0 8px #10b981;
+    }
+    .countdown-timer {
+        font-weight: 700;
+        font-size: 1rem;
+        min-width: 30px;
+        text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Demo Banner -->
+<div class="demo-banner">
+    <span class="demo-icon">&#9888;</span>
+    <span><strong>DEMO</strong> - This is a portfolio demonstration. Free-tier API limits may cause latency or rate limiting. Data is session-based and not persisted.</span>
+</div>
+
+<!-- Compact Page Header -->
+<div class="page-header">
+    <div class="page-header-left">
+        <h1 class="page-title">Data Ingestion</h1>
+        <span class="page-badge">STEP 1</span>
+    </div>
+    <p class="page-subtitle">Upload documents or images for RAG processing</p>
+</div>
+
+<!-- Main Content -->
+<div class="main-content">
+    <div class="upload-card">
+        <!-- Honeypot -->
+        <input type="text" name="website" id="honeypot" style="display:none;" tabindex="-1" autocomplete="off">
+
+        <div class="upload-area">
+            <!-- Drop Zone - Compact -->
+            <div class="drop-zone" id="dropZone" style="padding: 1.5rem;">
+                <div class="icon-container" style="margin-bottom: 0.5rem;">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-width="1.5">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="17 8 12 3 7 8" />
+                        <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                </div>
+                <p style="margin: 0;"><strong>Drop file here</strong> or click to browse</p>
+                <p class="supported-formats" style="margin: 0.25rem 0 0; font-size: 0.8rem;">PDF, DOCX, XLSX, Images • Multiple files supported</p>
+                <input type="file" id="fileInput" accept="{{ extensions | join(',') }}" multiple hidden>
+            </div>
+
+            <!-- File Preview (hidden by default) -->
+            <div class="file-preview hidden" id="filePreview">
+                <span class="file-name" id="fileName"></span>
+                <button class="remove-file" id="removeFile">&times;</button>
+            </div>
+
+            <!-- Options Row: Sanitization + Output Format -->
+            <div style="display: flex; gap: 1rem; margin: 1rem 0; flex-wrap: wrap;">
+                <!-- Sanitization Options (inline) -->
+                <div style="flex: 1; min-width: 280px; display: flex; align-items: center; gap: 1rem; padding: 0.75rem; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);">
+                    <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-light); white-space: nowrap;">Security:</span>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer; font-size: 0.8rem;">
+                        <input type="checkbox" id="removeMacros" name="sanitization" value="remove_macros">
+                        <span>Macros</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer; font-size: 0.8rem;">
+                        <input type="checkbox" id="stripMetadata" name="sanitization" value="strip_metadata">
+                        <span>Metadata</span>
+                    </label>
+                    <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer; font-size: 0.8rem;">
+                        <input type="checkbox" id="redactEmails" name="sanitization" value="redact_emails">
+                        <span>Emails</span>
+                    </label>
+                </div>
+                <!-- Output Format (inline) -->
+                <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem; background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border);">
+                    <label style="font-size: 0.8rem; font-weight: 600; color: var(--text-light); white-space: nowrap;">Format:</label>
+                    <select id="outputFormat" name="outputFormat" style="padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); font-size: 0.8rem;">
+                        <option value="markdown" selected>Markdown</option>
+                        <option value="json">JSON</option>
+                        <option value="xml">XML</option>
+                        <option value="text">Plain Text</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Validation Indicator (compact) -->
+            <div id="validationIndicator" class="validation-indicator" style="display: none; margin: 0.5rem 0; padding: 0.4rem 0.75rem; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius); color: #059669; font-size: 0.8rem; font-weight: 600;">
+                ✓ Schema Validated
+            </div>
+
+            <!-- Memory Status Display (compact) -->
+            <div id="memoryStatus" style="display: none; margin: 0.75rem 0; padding: 0.5rem 0.75rem; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: var(--radius); display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem;">
+                    <span style="color: var(--primary); font-weight: 600;">Memory:</span>
+                    <span id="memoryCount" style="font-weight: 700;">0</span>
+                    <span style="color: var(--text-light);">items</span>
+                    <span id="memoryItemsList" style="color: var(--text-light); margin-left: 0.5rem;"></span>
+                </div>
+                <button id="resetMemoryBtn" style="padding: 0.25rem 0.5rem; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 0.75rem; cursor: pointer;">Reset</button>
+            </div>
+
+            <!-- Ingest Button -->
+            <button class="cta-button" id="convertBtn" disabled>
+                <span class="btn-text">Ingest Document</span>
+                <span class="btn-loading" hidden>Processing...</span>
+            </button>
+
+            <!-- Progress Bar -->
+            <div id="uploadProgressContainer" style="display: none; margin-top: 1rem;">
+                <div
+                    style="display: flex; justify-content: space-between; margin-bottom: 0.25rem; font-size: 0.85rem; color: var(--text-light);">
+                    <span id="progressText">Uploading...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div style="width: 100%; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+                    <div id="progressBar"
+                        style="width: 0%; height: 100%; background: var(--primary); transition: width 0.1s linear;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Rate Limit Indicator with Semaphore -->
+            <div id="rateLimitIndicator" class="rate-limit-indicator">
+                <div class="semaphore">
+                    <div id="light1" class="semaphore-light"></div>
+                    <div id="light2" class="semaphore-light"></div>
+                    <div id="light3" class="semaphore-light"></div>
+                </div>
+                <span id="rateLimitMessage">Service busy. Please wait...</span>
+                <span class="countdown-timer" id="countdownTimer">--</span>
+                <span>seconds</span>
+            </div>
+
+            <!-- Finish & Go to RAG Button -->
+            <button class="cta-button" id="finishBtn"
+                style="display: none; margin-top: 1rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <span class="btn-text">✨ Finish & Go to RAG</span>
+            </button>
+        </div>
+
+        <!-- Status Message -->
+        <div class="status-message hidden" id="message"></div>
+
+        <!-- Result Display (hidden by default) -->
+        <div class="result-section hidden" id="resultSection">
+            <div class="result-header">
+                <h3>Conversion Complete</h3>
+                <button class="close-result" id="closeResult" title="Start New Conversion">&times;</button>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button class="action-btn primary" id="downloadMd" title="Download Markdown"
+                    aria-label="Download Markdown file">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    Download .md
+                </button>
+                <button class="action-btn" id="downloadTxt" title="Download Plain Text"
+                    aria-label="Download Plain Text file">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                    </svg>
+                    Download .txt
+                </button>
+                <button class="action-btn primary" id="analyzeInRAG" title="Analyze in RAG Chat"
+                    aria-label="Analyze converted document in RAG Chat"
+                    style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                    <span style="font-size: 1.1rem; margin-right: 0.5rem;">✨</span>
+                    Analyze in RAG Chat
+                </button>
+                <button class="action-btn primary" id="investigateBtn" title="Run AI Investigation Agent"
+                    aria-label="Run AI Investigation Agent on document"
+                    style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+                    <i class="bi bi-search-heart" style="margin-right: 0.35rem;"></i>
+                    Investigate
+                </button>
+                <button class="action-btn" id="copyContent" title="Copy to Clipboard"
+                    aria-label="Copy content to clipboard">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                    </svg>
+                    Copy
+                </button>
+                <button class="action-btn highlight" id="analyzeBtn" title="Analyze Document"
+                    aria-label="Analyze document content">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 21l-6-6m2-5a7 7 0 1 1-14 0 7 7 0 0 1 14 0z" />
+                    </svg>
+                    Analyze
+                </button>
+                <button class="action-btn highlight" id="chunkBtn" title="Chunk for RAG"
+                    aria-label="Chunk document for RAG">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" />
+                        <rect x="14" y="3" width="7" height="7" />
+                        <rect x="14" y="14" width="7" height="7" />
+                        <rect x="3" y="14" width="7" height="7" />
+                    </svg>
+                    Chunk for RAG
+                </button>
+            </div>
+
+            <!-- View Toggle -->
+            <div class="view-toggle">
+                <button class="view-btn active" id="viewRaw">Raw Markdown</button>
+                <button class="view-btn" id="viewRendered">Rendered Preview</button>
+            </div>
+
+            <!-- Content Display -->
+            <div class="content-display">
+                <div class="content-view" id="rawView">
+                    <pre id="markdownContent"></pre>
+                </div>
+                <div class="content-view hidden" id="renderedView">
+                    <div id="renderedContent" class="rendered-markdown"></div>
+                </div>
+            </div>
+
+            <!-- File Info -->
+            <div class="file-info-bar" id="fileInfoBar">
+                <span id="fileInfoName"></span>
+                <span id="fileInfoTokens"></span>
+            </div>
+        </div>
+
+        <!-- Analysis Modal -->
+        <div class="modal hidden" id="analysisModal">
+            <div class="modal-content analysis-modal">
+                <div class="modal-header">
+                    <h3>Document Analysis</h3>
+                    <button class="modal-close" id="closeAnalysis">&times;</button>
+                </div>
+                <div class="modal-body" id="analysisContent">
+                    <div class="loading-spinner">Analyzing...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chunking Modal -->
+        <div class="modal hidden" id="chunkModal">
+            <div class="modal-content chunk-modal">
+                <div class="modal-header">
+                    <h3>RAG Chunking Preview</h3>
+                    <button class="modal-close" id="closeChunk">&times;</button>
+                </div>
+                <div class="chunk-controls">
+                    <label>
+                        Chunk Size (tokens):
+                        <select id="chunkSize">
+                            <option value="256">256</option>
+                            <option value="512" selected>512</option>
+                            <option value="1024">1024</option>
+                            <option value="2048">2048</option>
+                        </select>
+                    </label>
+                    <label>
+                        Overlap:
+                        <select id="chunkOverlap">
+                            <option value="0">0</option>
+                            <option value="50" selected>50</option>
+                            <option value="100">100</option>
+                            <option value="200">200</option>
+                        </select>
+                    </label>
+                    <button class="action-btn primary" id="rechunkBtn">Re-chunk</button>
+                    <button class="action-btn" id="exportChunksBtn">Export JSON</button>
+                </div>
+                <div class="chunk-stats" id="chunkStats"></div>
+                <div class="modal-body chunks-container" id="chunksContent">
+                    <div class="loading-spinner">Chunking...</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Compact Info Bar -->
+    <div style="display: flex; justify-content: center; gap: 2rem; margin-top: 1rem; padding: 0.75rem; background: var(--surface); border-radius: var(--radius); font-size: 0.8rem; color: var(--text-light);">
+        <span><strong>{{ max_size_mb }}MB</strong> max</span>
+        <span><strong>{{ rate_limit }}/min</strong> rate</span>
+        <span><strong>0s</strong> retention</span>
+    </div>
+</div>
+
+<!-- Investigation Modal -->
+<div id="investigateModal" class="investigate-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center;">
+    <div style="background: white; border-radius: 12px; width: 90%; max-width: 700px; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);">
+            <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem; color: #7c3aed;">
+                <i class="bi bi-search-heart"></i> AI Investigation Agent
+            </h3>
+            <button onclick="closeInvestigateModal()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-light);">&times;</button>
+        </div>
+        <div style="padding: 1.25rem; overflow-y: auto; flex: 1;">
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Investigation Mission</label>
+                <textarea id="investigateMission" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: 8px; font-size: 0.95rem; resize: none;" rows="2"
+                    placeholder="What would you like to investigate in your document?"></textarea>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
+                    <span onclick="setMission('Identify all legal risks and liability clauses')" style="background: #f3e8ff; border: 1px solid #c4b5fd; border-radius: 20px; padding: 0.35rem 0.75rem; font-size: 0.75rem; color: #6b21a8; cursor: pointer;">Legal risks</span>
+                    <span onclick="setMission('Extract key financial metrics and figures')" style="background: #f3e8ff; border: 1px solid #c4b5fd; border-radius: 20px; padding: 0.35rem 0.75rem; font-size: 0.75rem; color: #6b21a8; cursor: pointer;">Financial metrics</span>
+                    <span onclick="setMission('Find all action items and deadlines')" style="background: #f3e8ff; border: 1px solid #c4b5fd; border-radius: 20px; padding: 0.35rem 0.75rem; font-size: 0.75rem; color: #6b21a8; cursor: pointer;">Action items</span>
+                    <span onclick="setMission('Summarize main arguments and conclusions')" style="background: #f3e8ff; border: 1px solid #c4b5fd; border-radius: 20px; padding: 0.35rem 0.75rem; font-size: 0.75rem; color: #6b21a8; cursor: pointer;">Main arguments</span>
+                </div>
+            </div>
+
+            <button id="investigateRunBtn" onclick="runInvestigation()" style="width: 100%; padding: 0.75rem; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                <i class="bi bi-play-fill"></i>
+                <span>Start Investigation</span>
+            </button>
+
+            <div id="investigateProgress" style="margin-top: 1.5rem; display: none;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                    <div class="inv-step" data-step="decompose" style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: var(--text-light);">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center;">📋</div>
+                        <span>Plan</span>
+                    </div>
+                    <div class="inv-step" data-step="retrieve" style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: var(--text-light);">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center;">🔍</div>
+                        <span>Search</span>
+                    </div>
+                    <div class="inv-step" data-step="analyze" style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: var(--text-light);">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center;">🧠</div>
+                        <span>Analyze</span>
+                    </div>
+                    <div class="inv-step" data-step="validate" style="display: flex; flex-direction: column; align-items: center; gap: 0.25rem; font-size: 0.7rem; color: var(--text-light);">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center;">✓</div>
+                        <span>Validate</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="investigateResult" style="margin-top: 1rem; padding: 1rem; background: #f8fafc; border-radius: 8px; display: none;">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Set CSRF token for use in script.js
+    window.CSRF_TOKEN = '{{ csrf_token }}';
+</script>
+<script src="/static/script.js"></script>
+<script>
+    // Live stats counter
+    async function fetchStats() {
+        try {
+            const response = await fetch('/api/stats');
+            const data = await response.json();
+            if (data.success && data.statistics) {
+                const el = document.getElementById('liveConversions');
+                if (el) {
+                    const count = data.statistics.conversions.total || 0;
+                    el.textContent = count.toLocaleString();
+                }
+            }
+        } catch (e) {
+            const el = document.getElementById('liveConversions');
+            if (el) el.textContent = '1,000+';
+        }
+    }
+    fetchStats();
+
+    // ============================================
+    // INVESTIGATION AGENT FUNCTIONS
+    // ============================================
+
+    // Open investigation modal
+    document.getElementById('investigateBtn').addEventListener('click', function() {
+        const modal = document.getElementById('investigateModal');
+        modal.style.display = 'flex';
+        document.getElementById('investigateMission').value = '';
+        document.getElementById('investigateProgress').style.display = 'none';
+        document.getElementById('investigateResult').style.display = 'none';
+        document.getElementById('investigateResult').innerHTML = '';
+    });
+
+    function closeInvestigateModal() {
+        document.getElementById('investigateModal').style.display = 'none';
+    }
+
+    function setMission(text) {
+        document.getElementById('investigateMission').value = text;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    async function runInvestigation() {
+        const mission = document.getElementById('investigateMission').value.trim();
+        if (!mission) {
+            alert('Please enter an investigation mission');
+            return;
+        }
+
+        const runBtn = document.getElementById('investigateRunBtn');
+        const progress = document.getElementById('investigateProgress');
+        const resultDiv = document.getElementById('investigateResult');
+
+        runBtn.disabled = true;
+        runBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Investigating...';
+        progress.style.display = 'block';
+        resultDiv.style.display = 'none';
+
+        // Animate steps
+        const steps = ['decompose', 'retrieve', 'analyze', 'validate'];
+        let stepIndex = 0;
+        const stepInterval = setInterval(() => {
+            if (stepIndex < steps.length) {
+                const stepEl = document.querySelector(`.inv-step[data-step="${steps[stepIndex]}"] > div`);
+                if (stepEl) stepEl.style.background = '#fef3c7';
+                if (stepIndex > 0) {
+                    const prevEl = document.querySelector(`.inv-step[data-step="${steps[stepIndex-1]}"] > div`);
+                    if (prevEl) prevEl.style.background = '#dcfce7';
+                }
+                stepIndex++;
+            }
+        }, 1500);
+
+        try {
+            const response = await fetch('/api/investigate?debug=1', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ mission: mission })
+            });
+
+            clearInterval(stepInterval);
+            const data = await response.json();
+
+            // Mark all steps complete
+            steps.forEach(s => {
+                const el = document.querySelector(`.inv-step[data-step="${s}"] > div`);
+                if (el) el.style.background = '#dcfce7';
+            });
+
+            displayResults(data, resultDiv);
+
+        } catch (error) {
+            clearInterval(stepInterval);
+            resultDiv.innerHTML = `<div style="color: #ef4444;"><strong>Error:</strong> ${error.message}</div>`;
+            resultDiv.style.display = 'block';
+        } finally {
+            runBtn.disabled = false;
+            runBtn.innerHTML = '<i class="bi bi-play-fill"></i> <span>Start Investigation</span>';
+        }
+    }
+
+    function displayResults(data, container) {
+        if (!data.success) {
+            container.innerHTML = `<div style="color: #ef4444;"><strong>Error:</strong> ${escapeHtml(data.error || 'Investigation failed')}</div>`;
+            container.style.display = 'block';
+            return;
+        }
+
+        const report = data.report || {};
+        const findings = report.findings || [];
+        const summary = report.summary || 'No summary available';
+
+        let html = `<div style="margin-bottom: 1rem;">
+            <h4 style="margin: 0 0 0.5rem 0; color: #7c3aed;">Summary</h4>
+            <p style="margin: 0;">${escapeHtml(summary)}</p>
+        </div>`;
+
+        if (findings.length > 0) {
+            html += `<h4 style="margin: 0 0 0.75rem 0;">Findings (${findings.length})</h4>`;
+            findings.forEach(f => {
+                const severity = (f.severity || 'low').toLowerCase();
+                const borderColor = severity === 'high' ? '#ef4444' : severity === 'medium' ? '#f59e0b' : '#8b5cf6';
+                html += `<div style="padding: 0.75rem; background: white; border-radius: 6px; border-left: 3px solid ${borderColor}; margin-bottom: 0.75rem;">
+                    <div style="font-weight: 600;">${escapeHtml(f.finding || f.risk || 'Finding')}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-light);">
+                        ${f.source ? `Source: ${escapeHtml(f.source)}` : ''}
+                        ${f.severity ? ` | Severity: ${f.severity}` : ''}
+                    </div>
+                    ${f.recommendation ? `<div style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-light);">💡 ${escapeHtml(f.recommendation)}</div>` : ''}
+                </div>`;
+            });
+        }
+
+        html += `<div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--text-light); display: flex; justify-content: space-between;">
+            <span>${data.steps_completed || 0} steps | ${data.total_latency_ms || 0}ms</span>
+            <span>Saved ${(data.savings_percent || 0).toFixed(1)}% vs GPT-4</span>
+        </div>`;
+
+        container.innerHTML = html;
+        container.style.display = 'block';
+    }
+
+    // Close modal on outside click
+    document.getElementById('investigateModal').addEventListener('click', function(e) {
+        if (e.target === this) closeInvestigateModal();
+    });
+</script>
+{% endblock %}
