@@ -284,7 +284,13 @@ jobs:
           done
 
       - name: "🔥 Run Smoke Tests"
-        run: python tests/verify_deployment.py
+        run: |
+          echo "Testing critical endpoints..."
+          curl -sf http://localhost:8080/health || exit 1
+          curl -sf http://localhost:8080/api/stats || exit 1
+          curl -sf http://localhost:8080/api/formats || exit 1
+          curl -sf http://localhost:8080/ || exit 1
+          echo "✅ All smoke tests passed!"
 
       - name: "📊 API Health Summary"
         run: |
