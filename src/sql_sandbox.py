@@ -964,8 +964,11 @@ class SQLAgent:
 
             cursor = conn.cursor()
 
-            # Execute with row limit
-            limited_sql = f"{sql} LIMIT {MAX_ROWS + 1}"
+            # Execute with row limit (avoid duplicate LIMIT)
+            if re.search(r'\bLIMIT\b', sql, re.IGNORECASE):
+                limited_sql = sql  # Already has LIMIT, don't add another
+            else:
+                limited_sql = f"{sql} LIMIT {MAX_ROWS + 1}"
             cursor.execute(limited_sql)
 
             # Get column names
